@@ -1,7 +1,11 @@
 <resources>
-    <color name="gb_background">#E7E9EE</color>
-    <color name="gb_surface">#E7E9EE</color>
-    <color name="gb_accent">#6D5DFB</color>
-    <color name="gb_text">#252936</color>
-    <color name="gb_muted">#747B8A</color>
+    <color name="gb_background">#07111F</color>
+    <color name="gb_surface">#0D1B2E</color>
+    <color name="gb_surface_dark">#06101D</color>
+    <color name="gb_surface_light">#183250</color>
+    <color name="gb_accent">#19B5FF</color>
+    <color name="gb_accent_bright">#59D8FF</color>
+    <color name="gb_electric">#2F7BFF</color>
+    <color name="gb_text">#EAF8FF</color>
+    <color name="gb_muted">#7FA6C4</color>
 </resources>
