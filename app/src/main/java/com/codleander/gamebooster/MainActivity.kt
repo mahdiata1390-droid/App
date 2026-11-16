@@ -1,7 +1,6 @@
 package com.codleander.gamebooster
 
 import android.app.Activity
-import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -22,12 +21,12 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(com.codleander.gamebooster.R.layout.activity_main)
-        ramView = findViewById(com.codleander.gamebooster.R.id.ram)
-        thermalView = findViewById(com.codleander.gamebooster.R.id.thermal)
-        refreshView = findViewById(com.codleander.gamebooster.R.id.refresh)
-        gamesContainer = findViewById(com.codleander.gamebooster.R.id.games)
-        findViewById<Button>(com.codleander.gamebooster.R.id.dnd).setOnClickListener { openDndSettings() }
+        setContentView(R.layout.activity_main)
+        ramView = findViewById(R.id.ram)
+        thermalView = findViewById(R.id.thermal)
+        refreshView = findViewById(R.id.refresh)
+        gamesContainer = findViewById(R.id.games)
+        findViewById<Button>(R.id.dnd).setOnClickListener { openDndSettings() }
         updateStats()
         loadGames()
     }
@@ -38,7 +37,6 @@ class MainActivity : Activity() {
         am.getMemoryInfo(info)
         val used = info.totalMem - info.availMem
         ramView.text = String.format(Locale.US, "RAM\n%.1f / %.1f GB", used / 1073741824.0, info.totalMem / 1073741824.0)
-
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         val status = if (android.os.Build.VERSION.SDK_INT >= 29) pm.currentThermalStatus else -1
         thermalView.text = "THERMAL\n" + thermalLabel(status)
@@ -68,23 +66,27 @@ class MainActivity : Activity() {
         apps.forEach { ri ->
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
-                setPadding(16, 8, 8, 8)
-                setBackgroundColor(Color.rgb(18, 22, 34))
+                setPadding(18, 14, 10, 14)
+                background = getDrawable(R.drawable.neo_card)
+                elevation = 6f
             }
             val name = TextView(this).apply {
                 text = ri.loadLabel(pm)
                 textSize = 16f
-                setTextColor(Color.WHITE)
+                setTextColor(Color.rgb(234, 248, 255))
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
             val launch = Button(this).apply {
                 text = "BOOST"
+                setTextColor(Color.rgb(89, 216, 255))
+                background = getDrawable(R.drawable.neo_button)
+                elevation = 4f
                 setOnClickListener { launchGame(ri.activityInfo.packageName) }
             }
             row.addView(name)
             row.addView(launch)
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.bottomMargin = 10
+            lp.bottomMargin = 12
             gamesContainer.addView(row, lp)
         }
     }
@@ -97,7 +99,6 @@ class MainActivity : Activity() {
     }
 
     private fun openDndSettings() {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
     }
 }
