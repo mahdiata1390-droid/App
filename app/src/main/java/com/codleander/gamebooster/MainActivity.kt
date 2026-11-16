@@ -7,8 +7,11 @@ import android.graphics.Color
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.util.Locale
@@ -18,6 +21,7 @@ class MainActivity : Activity() {
     private lateinit var thermalView: TextView
     private lateinit var refreshView: TextView
     private lateinit var gamesContainer: LinearLayout
+    private lateinit var lightningIcon: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,9 +30,18 @@ class MainActivity : Activity() {
         thermalView = findViewById(R.id.thermal)
         refreshView = findViewById(R.id.refresh)
         gamesContainer = findViewById(R.id.games)
-        findViewById<Button>(R.id.dnd).setOnClickListener { openDndSettings() }
+        lightningIcon = findViewById(R.id.lightningIcon)
+        findViewById<Button>(R.id.dnd).setOnClickListener {
+            pulse(it)
+            pulse(lightningIcon)
+            openDndSettings()
+        }
         updateStats()
         loadGames()
+    }
+
+    private fun pulse(view: View) {
+        view.startAnimation(AnimationUtils.loadAnimation(this, R.anim.pulse_electric))
     }
 
     private fun updateStats() {
@@ -81,7 +94,11 @@ class MainActivity : Activity() {
                 setTextColor(Color.rgb(89, 216, 255))
                 background = getDrawable(R.drawable.neo_button)
                 elevation = 4f
-                setOnClickListener { launchGame(ri.activityInfo.packageName) }
+                setOnClickListener {
+                    pulse(this)
+                    pulse(lightningIcon)
+                    launchGame(ri.activityInfo.packageName)
+                }
             }
             row.addView(name)
             row.addView(launch)
