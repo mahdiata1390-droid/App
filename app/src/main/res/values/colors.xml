@@ -1,0 +1,7 @@
+<resources>
+    <color name="gb_background">#090B12</color>
+    <color name="gb_surface">#121622</color>
+    <color name="gb_accent">#7C4DFF</color>
+    <color name="gb_text">#F5F5F7</color>
+    <color name="gb_muted">#9AA0B2</color>
+</resources>
