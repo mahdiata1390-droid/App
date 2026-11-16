@@ -23,7 +23,7 @@ import android.media.ToneGenerator
 import android.media.AudioManager
 import java.util.Locale
 
-class MainActivity : Activity {
+class MainActivity : Activity() {
     private lateinit var ramView: TextView
     private lateinit var thermalView: TextView
     private lateinit var refreshView: TextView
