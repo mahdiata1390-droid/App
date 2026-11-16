@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/gb_background">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+<TextView android:text="GAME BOOSTER" android:textColor="@color/gb_text" android:textSize="28sp" android:textStyle="bold" android:layout_width="match_parent" android:layout_height="wrap_content" />
+<TextView android:text="Performance dashboard" android:textColor="@color/gb_muted" android:layout_width="match_parent" android:layout_height="wrap_content" />
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="18dp">
+<TextView android:id="@+id/ram" android:text="RAM&#10;--" android:textColor="@color/gb_text" android:gravity="center" android:background="@color/gb_surface" android:layout_width="0dp" android:layout_height="82dp" android:layout_weight="1" />
+<TextView android:id="@+id/thermal" android:text="THERMAL&#10;--" android:textColor="@color/gb_text" android:gravity="center" android:background="@color/gb_surface" android:layout_width="0dp" android:layout_height="82dp" android:layout_weight="1" android:layout_marginStart="10dp" />
+<TextView android:id="@+id/refresh" android:text="DISPLAY&#10;--" android:textColor="@color/gb_text" android:gravity="center" android:background="@color/gb_surface" android:layout_width="0dp" android:layout_height="82dp" android:layout_weight="1" android:layout_marginStart="10dp" />
+</LinearLayout>
+<Button android:id="@+id/dnd" android:text="GAME MODE / DND SETTINGS" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="16dp" />
+<TextView android:text="INSTALLED GAMES" android:textColor="@color/gb_text" android:textSize="18sp" android:textStyle="bold" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" />
+<LinearLayout android:id="@+id/games" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="10dp" />
+</LinearLayout>
+</ScrollView>
