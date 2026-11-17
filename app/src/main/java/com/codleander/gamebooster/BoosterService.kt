@@ -11,6 +11,8 @@ import android.provider.Settings
 import android.view.*
 import android.widget.TextView
 import java.util.Locale
+import org.json.JSONArray
+import org.json.JSONObject
 
 class BoosterService : Service() {
     companion object {
@@ -198,7 +200,19 @@ class BoosterService : Service() {
         if (sessionStartedAt == 0L || targetPackage == null) return
         val duration = (System.currentTimeMillis() - sessionStartedAt).coerceAtLeast(0L)
         val label = packageManager.getApplicationLabel(packageManager.getApplicationInfo(targetPackage!!, 0)).toString()
-        getSharedPreferences("booster_history", MODE_PRIVATE).edit()
+        val prefs = getSharedPreferences("booster_history", MODE_PRIVATE)
+        val sessions = runCatching { JSONArray(prefs.getString("sessions", "[]")) }.getOrDefault(JSONArray())
+        sessions.put(JSONObject().apply {
+            put("start", sessionStartedAt)
+            put("end", System.currentTimeMillis())
+            put("duration", duration)
+            put("package", targetPackage)
+            put("label", label)
+            put("peakThermal", peakThermalStatus)
+        })
+        while (sessions.length() > 2000) sessions.remove(0)
+        prefs.edit()
+            .putString("sessions", sessions.toString())
             .putString("last_label", label)
             .putString("last_package", targetPackage)
             .putLong("last_duration_ms", duration)
