@@ -32,6 +32,11 @@ class BoosterService : Service() {
     private var peakThermalStatus = PowerManager.THERMAL_STATUS_NONE
     private var sessionStartBrightness = -1f
     private var sessionStartAt = 0L
+    private var profileDnd = true
+    private var profileAwake = true
+    private var profileBrightness = false
+    private var profileHud = true
+    private var overlayPanel: LinearLayout? = null
 
     private val poller = object : Runnable {
         override fun run() {
@@ -72,7 +77,11 @@ class BoosterService : Service() {
                 targetPackage = intent?.getStringExtra(EXTRA_PACKAGE) ?: targetPackage
                 if (sessionStartedAt == 0L) sessionStartedAt = System.currentTimeMillis()
                 if (sessionStartAt == 0L) sessionStartAt = sessionStartedAt
-                if (Settings.System.canWrite(this)) sessionStartBrightness = Settings.System.getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1f)
+                profileDnd = intent?.getBooleanExtra("profile_dnd", true) ?: true
+                profileAwake = intent?.getBooleanExtra("profile_awake", true) ?: true
+                profileBrightness = intent?.getBooleanExtra("profile_brightness", false) ?: false
+                profileHud = intent?.getBooleanExtra("profile_hud", true) ?: true
+                if (profileBrightness && Settings.System.canWrite(this)) sessionStartBrightness = Settings.System.getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1f)
                 if (targetPackage != null && Settings.canDrawOverlays(this)) showBubble()
                 handler.removeCallbacks(poller)
                 handler.post(poller)
@@ -118,7 +127,7 @@ class BoosterService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         val tv = TextView(this).apply {
-            text = "⚡"
+            text = "⚡\n00:00"
             textSize = 22f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
@@ -126,8 +135,9 @@ class BoosterService : Service() {
             elevation = 12f
             contentDescription = "Game Booster floating control"
             setOnClickListener {
+                openToolbox()
                 val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                if (nm.isNotificationPolicyAccessGranted) {
+                if (nm.isNotificationPolicyAccessGranted && profileDnd) {
                     nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
                 }
             }
@@ -188,6 +198,13 @@ class BoosterService : Service() {
 
         bubble = tv
         windowManager?.addView(tv, params)
+    }
+
+    private fun openToolbox() {
+        val tv = bubble as? TextView ?: return
+        tv.text = "⚡\nTOOLS"
+        tv.setOnClickListener { stopSelf() }
+        Handler(Looper.getMainLooper()).postDelayed({ if (bubble != null) tv.text = "⚡" }, 2500L)
     }
 
     private fun updateBubble(active: Boolean) {
