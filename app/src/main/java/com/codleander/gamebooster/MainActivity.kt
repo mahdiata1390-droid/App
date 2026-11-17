@@ -80,7 +80,10 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (::dndState.isInitialized) updatePermissionStates()
+        if (::dndState.isInitialized) {
+            syncActiveSessionStart()
+            updatePermissionStates()
+        }
     }
 
     override fun onDestroy() {
@@ -106,10 +109,26 @@ class MainActivity : Activity() {
         // Do not keep the booster window awake unconditionally.
     }
 
+    private fun syncActiveSessionStart() {
+        val stored = getSharedPreferences("booster_runtime", MODE_PRIVATE)
+            .getLong("session_started_at", 0L)
+        sessionStartedAt = stored
+    }
+
     private fun updateSessionTimer() {
-        if (sessionStartedAt <= 0L) { timerView.text = "SESSION\n00:00:00"; return }
+        syncActiveSessionStart()
+        if (sessionStartedAt <= 0L) {
+            timerView.text = "SESSION\n00:00:00"
+            return
+        }
         val total = ((System.currentTimeMillis() - sessionStartedAt) / 1000L).coerceAtLeast(0L)
-        timerView.text = String.format(Locale.US, "SESSION\n%02d:%02d:%02d", total/3600, (total%3600)/60, total%60)
+        timerView.text = String.format(
+            Locale.US,
+            "SESSION\n%02d:%02d:%02d",
+            total / 3600,
+            (total % 3600) / 60,
+            total % 60
+        )
     }
 
     private var pingThread: Thread? = null
@@ -281,11 +300,15 @@ class MainActivity : Activity() {
         selectedPackage = pkg
         selectedLabel = label
         selectedProfile = loadProfile(pkg)
-        getSharedPreferences("game_profiles", MODE_PRIVATE).edit()
+
+        val prefs = getSharedPreferences("game_profiles", MODE_PRIVATE)
+        prefs.edit()
             .putString("${pkg}_label", label)
-            .putInt("${pkg}_launches", getSharedPreferences("game_profiles", MODE_PRIVATE).getInt("${pkg}_launches", 0) + 1)
+            .putInt("${pkg}_launches", prefs.getInt("${pkg}_launches", 0) + 1)
             .apply()
-        if (Settings.canDrawOverlays(this)) {
+
+        var sessionStarted = false
+        if (hasUsageAccess()) {
             val serviceIntent = Intent(this, BoosterService::class.java).apply {
                 action = BoosterService.ACTION_START
                 putExtra(BoosterService.EXTRA_PACKAGE, pkg)
@@ -294,12 +317,21 @@ class MainActivity : Activity() {
                 putExtra("profile_brightness", selectedProfile.lockBrightness)
                 putExtra("profile_hud", selectedProfile.hud)
             }
-            if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
-            sessionStartedAt = System.currentTimeMillis()
-            statusView.text = "BOOST SESSION ACTIVE • " + label.uppercase(Locale.ROOT)
+            try {
+                if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
+                sessionStartedAt = System.currentTimeMillis()
+                sessionStarted = true
+                statusView.text = "BOOST SESSION ACTIVE • " + label.uppercase(Locale.ROOT)
+            } catch (e: SecurityException) {
+                statusView.text = "GAME LAUNCHED • BOOST SERVICE PERMISSION BLOCKED"
+            } catch (e: RuntimeException) {
+                statusView.text = "GAME LAUNCHED • BOOST SERVICE COULD NOT START"
+            }
         } else {
-            statusView.text = "GAME LAUNCHED • ENABLE OVERLAY FOR FLOATING BOOST"
+            statusView.text = "GAME LAUNCHED • ENABLE GAME DETECTION FOR BOOST SESSION"
         }
+
+        if (!sessionStarted) sessionStartedAt = 0L
 
         packageManager.getLaunchIntentForPackage(pkg)?.let {
             it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
