@@ -62,6 +62,7 @@ class MainActivity : Activity() {
         pingView = findViewById(R.id.pingStatus)
         notificationState = findViewById(R.id.notificationPermissionState)
         applyGlobalUiPolish()
+        recoverStaleRuntimeIfNeeded()
         startLiveDashboard()
         tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
 
@@ -84,6 +85,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::dndState.isInitialized) {
+            recoverStaleRuntimeIfNeeded()
             syncActiveSessionStart()
             updatePermissionStates()
         }
@@ -110,6 +112,84 @@ class MainActivity : Activity() {
 
     private fun applyGlobalUiPolish() {
         // Do not keep the booster window awake unconditionally.
+    }
+
+    private fun recoverStaleRuntimeIfNeeded() {
+        val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
+        val start = runtime.getLong("session_started_at", 0L)
+        if (start <= 0L) return
+
+        val heartbeat = runtime.getLong("last_heartbeat", 0L)
+        val now = System.currentTimeMillis()
+        if (heartbeat > 0L && now - heartbeat < 12_000L) return
+
+        val target = runtime.getString("target_package", null)
+        val label = runtime.getString("target_label", target ?: "Unknown Game") ?: "Unknown Game"
+        val activePlayMs = runtime.getLong("active_play_ms", 0L)
+        val recoveredDuration = activePlayMs.coerceAtLeast((now - start).coerceAtLeast(0L).coerceAtMost(2_000L))
+
+        // Restore only values that this booster session actually changed.
+        if (runtime.getBoolean("dnd_changed", false)) {
+            val previous = runtime.getInt("previous_interruption_filter", -1)
+            val expected = runtime.getInt(
+                "expected_interruption_filter",
+                NotificationManager.INTERRUPTION_FILTER_PRIORITY
+            )
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (previous >= 0 && nm.isNotificationPolicyAccessGranted &&
+                nm.currentInterruptionFilter == expected
+            ) {
+                runCatching { nm.setInterruptionFilter(previous) }
+            }
+        }
+
+        if (runtime.getBoolean("screen_timeout_changed", false) &&
+            Settings.System.canWrite(this)
+        ) {
+            val previous = runtime.getLong("previous_screen_timeout", -1L)
+            if (previous > 0L) {
+                runCatching {
+                    Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, previous)
+                }
+            }
+        }
+
+        if (runtime.getBoolean("brightness_changed", false) &&
+            Settings.System.canWrite(this)
+        ) {
+            val previous = runtime.getInt("previous_brightness", -1)
+            if (previous >= 0) {
+                runCatching {
+                    Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, previous)
+                }
+            }
+        }
+
+        if (!target.isNullOrBlank() && recoveredDuration > 0L) {
+            val historyPrefs = getSharedPreferences("booster_history", MODE_PRIVATE)
+            val sessions = runCatching {
+                JSONArray(historyPrefs.getString("sessions", "[]"))
+            }.getOrDefault(JSONArray())
+            sessions.put(org.json.JSONObject().apply {
+                put("start", start)
+                put("end", now)
+                put("duration", recoveredDuration)
+                put("package", target)
+                put("label", label)
+                put("peakThermal", runtime.getInt("peak_thermal", PowerManager.THERMAL_STATUS_NONE))
+                put("recovered", true)
+            })
+            while (sessions.length() > 2000) sessions.remove(0)
+            historyPrefs.edit()
+                .putString("sessions", sessions.toString())
+                .putString("last_label", label)
+                .putString("last_package", target)
+                .putLong("last_duration_ms", recoveredDuration)
+                .apply()
+        }
+
+        runtime.edit().clear().apply()
+        statusView.text = "RECOVERED LAST GAME SESSION • SETTINGS RESTORED"
     }
 
     private fun syncActiveSessionStart() {
@@ -140,13 +220,22 @@ class MainActivity : Activity() {
         if (pingThread?.isAlive == true) return
         pingThread = Thread {
             val start = System.nanoTime()
-            val ok = runCatching { java.net.InetAddress.getByName("1.1.1.1").isReachable(1200) }.getOrDefault(false)
-            val ms = (System.nanoTime() - start) / 1_000_000L
+            val ok = runCatching {
+                java.net.Socket().use { socket ->
+                    socket.connect(java.net.InetSocketAddress("1.1.1.1", 443), 1200)
+                }
+                true
+            }.getOrDefault(false)
+            val ms = ((System.nanoTime() - start) / 1_000_000L).coerceAtLeast(1L)
             runOnUiThread {
-                pingView.text = if (ok) "PING\n${ms} ms" else "PING\nTIMEOUT"
+                if (isFinishing || isDestroyedCompat()) return@runOnUiThread
+                pingView.text = if (ok) "LATENCY\n${ms} ms" else "LATENCY\nTIMEOUT"
             }
         }.also { it.start() }
     }
+
+    private fun isDestroyedCompat(): Boolean =
+        Build.VERSION.SDK_INT >= 17 && isDestroyed
 
     private fun updateNetwork() {
         val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -211,12 +300,13 @@ class MainActivity : Activity() {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val apps = pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
             .filter { it.activityInfo.packageName != packageName }
+            .filter {
+                val info = it.activityInfo.applicationInfo
+                info.category == ApplicationInfo.CATEGORY_GAME ||
+                    (info.flags and ApplicationInfo.FLAG_IS_GAME) != 0
+            }
             .distinctBy { it.activityInfo.packageName }
-            .sortedWith(
-                compareByDescending<android.content.pm.ResolveInfo> {
-                    it.activityInfo.applicationInfo.category == ApplicationInfo.CATEGORY_GAME
-                }.thenBy { it.loadLabel(pm).toString().lowercase(Locale.ROOT) }
-            )
+            .sortedBy { it.loadLabel(pm).toString().lowercase(Locale.ROOT) }
 
         gamesContainer.removeAllViews()
         apps.forEach { ri ->
@@ -260,8 +350,6 @@ class MainActivity : Activity() {
                 setTextColor(Color.rgb(89, 216, 255)); background=getDrawable(R.drawable.neo_button); elevation=4f
                 setOnClickListener { openProfileEditor(ri.activityInfo.packageName, ri.loadLabel(pm).toString()) }
             }
-            row.addView(profile)
-
             val launch = Button(this).apply {
                 text = "BOOST"
                 setTextColor(Color.rgb(89, 216, 255))
@@ -272,7 +360,10 @@ class MainActivity : Activity() {
                     startGameSession(ri.activityInfo.packageName, ri.loadLabel(pm).toString())
                 }
             }
-            row.addView(icon); row.addView(nameBox); row.addView(launch)
+            row.addView(icon)
+            row.addView(nameBox)
+            row.addView(profile)
+            row.addView(launch)
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             lp.bottomMargin = 12
             gamesContainer.addView(row, lp)
@@ -288,7 +379,7 @@ class MainActivity : Activity() {
     }
     private fun openProfileEditor(pkg: String, label: String) {
         val p = loadProfile(pkg)
-        val items = arrayOf("Gaming DND", "Keep Screen On", "Brightness Lock", "Live HUD")
+        val items = arrayOf("Gaming DND", "Keep Screen On", "Lock Current Brightness", "Live HUD")
         val checked = booleanArrayOf(p.dnd,p.keepAwake,p.lockBrightness,p.hud)
         AlertDialog.Builder(this).setTitle("GAME PROFILE • $label").setMultiChoiceItems(items, checked) { _, which, value -> checked[which]=value }
             .setPositiveButton("SAVE") { _, _ ->
@@ -402,7 +493,11 @@ class MainActivity : Activity() {
             "${it.key}: ${formatPlayTime(it.value)}"
         }
         historyHint.text = "TODAY  $today\nTHIS MONTH  $month\n" + if (top.isBlank()) "No sessions this month yet." else "TOP: $top"
-        findViewById<HistoryChartView>(R.id.historyChart).setData(byGame.values.sortedDescending().take(8))
+        val chartData = byGame.entries
+            .sortedByDescending { it.value }
+            .take(8)
+            .map { it.key to it.value }
+        findViewById<HistoryChartView>(R.id.historyChart).setData(chartData)
     }
 
     private fun formatPlayTime(ms: Long): String {
