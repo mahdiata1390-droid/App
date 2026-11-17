@@ -39,6 +39,8 @@ class BoosterService : Service() {
     private var sessionStartScreenTimeout = -1L
     private var screenTimeoutChangedByService = false
     private var sessionStartAt = 0L
+    private var activePlayMs = 0L
+    private var lastPollAt = 0L
     private var profileDnd = true
     private var profileAwake = true
     private var profileBrightness = false
@@ -52,7 +54,12 @@ class BoosterService : Service() {
         override fun run() {
             val target = targetPackage
             if (target == null) return
+            val now = System.currentTimeMillis()
             val foreground = foregroundPackage()
+            if (foreground == target && lastPollAt > 0L) {
+                activePlayMs += (now - lastPollAt).coerceIn(0L, POLL_MS * 2L)
+            }
+            lastPollAt = now
             updateThermalPeak()
             enforceScreenTimeout()
             enforceBrightnessLock()
@@ -104,6 +111,8 @@ class BoosterService : Service() {
                 targetPackage = requestedPackage
                 sessionStartedAt = System.currentTimeMillis()
                 sessionStartAt = sessionStartedAt
+                activePlayMs = 0L
+                lastPollAt = sessionStartedAt
                 getSharedPreferences("booster_runtime", MODE_PRIVATE).edit()
                     .putLong("session_started_at", sessionStartedAt)
                     .putString("target_package", targetPackage)
@@ -352,6 +361,8 @@ class BoosterService : Service() {
         targetPackage = null
         sessionStartedAt = 0L
         sessionStartAt = 0L
+        activePlayMs = 0L
+        lastPollAt = 0L
         sessionStartBrightness = -1f
         brightnessChangedByService = false
         sessionStartScreenTimeout = -1L
@@ -362,7 +373,8 @@ class BoosterService : Service() {
 
     private fun saveSessionHistory() {
         if (sessionStartedAt == 0L || targetPackage == null) return
-        val duration = (System.currentTimeMillis() - sessionStartedAt).coerceAtLeast(0L)
+        val totalDuration = (System.currentTimeMillis() - sessionStartedAt).coerceAtLeast(0L)
+        val duration = if (activePlayMs > 0L) activePlayMs else totalDuration.coerceAtMost(POLL_MS * 2L)
         val label = runCatching {
             packageManager.getApplicationLabel(
                 packageManager.getApplicationInfo(targetPackage!!, 0)
