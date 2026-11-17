@@ -247,17 +247,43 @@ class MainActivity : Activity() {
     private fun updatePing() {
         if (pingThread?.isAlive == true) return
         pingThread = Thread {
-            val start = System.nanoTime()
-            val ok = runCatching {
-                java.net.Socket().use { socket ->
-                    socket.connect(java.net.InetSocketAddress("1.1.1.1", 443), 1200)
+            val targets = listOf("1.1.1.1", "8.8.8.8", "9.9.9.9")
+            var bestMs: Long? = null
+
+            for (host in targets) {
+                val ms = runCatching {
+                    val address = java.net.InetAddress.getByName(host)
+                    val start = System.nanoTime()
+                    if (!address.isReachable(1200)) return@runCatching null
+                    ((System.nanoTime() - start) / 1_000_000L).coerceAtLeast(1L)
+                }.getOrNull()
+
+                if (ms != null && (bestMs == null || ms < bestMs!!)) {
+                    bestMs = ms
                 }
-                true
-            }.getOrDefault(false)
-            val ms = ((System.nanoTime() - start) / 1_000_000L).coerceAtLeast(1L)
+            }
+
+            // ICMP reachability is not guaranteed on every Android/network path.
+            // If it is blocked, use a short TCP connect as a latency fallback
+            // rather than reporting a fake value.
+            if (bestMs == null) {
+                bestMs = runCatching {
+                    val start = System.nanoTime()
+                    java.net.Socket().use { socket ->
+                        socket.connect(java.net.InetSocketAddress("1.1.1.1", 443), 1200)
+                    }
+                    ((System.nanoTime() - start) / 1_000_000L).coerceAtLeast(1L)
+                }.getOrNull()
+            }
+
+            val result = bestMs
             runOnUiThread {
                 if (isFinishing || isDestroyedCompat()) return@runOnUiThread
-                pingView.text = if (ok) "NET TEST\n${ms} ms" else "NET TEST\nTIMEOUT"
+                pingView.text = if (result != null) {
+                    "PING\n${result} ms"
+                } else {
+                    "PING\nTIMEOUT"
+                }
             }
         }.also { it.start() }
     }
@@ -487,13 +513,6 @@ class MainActivity : Activity() {
         val alreadyActive = activeStart > 0L && activePackage == pkg
 
         val prefs = getSharedPreferences("game_profiles", MODE_PRIVATE)
-        if (!alreadyActive) {
-            prefs.edit()
-                .putString("${pkg}_label", label)
-                .putInt("${pkg}_launches", prefs.getInt("${pkg}_launches", 0) + 1)
-                .apply()
-        }
-
         var sessionRequested = false
         if (hasUsageAccess()) {
             val serviceIntent = Intent(this, BoosterService::class.java).apply {
@@ -530,6 +549,12 @@ class MainActivity : Activity() {
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching {
             startActivity(launchIntent)
+            if (sessionRequested && !alreadyActive) {
+                prefs.edit()
+                    .putString("${pkg}_label", label)
+                    .putInt("${pkg}_launches", prefs.getInt("${pkg}_launches", 0) + 1)
+                    .apply()
+            }
         }.onFailure {
             errorFeedback()
             statusView.text = "GAME COULD NOT BE LAUNCHED • $label"
