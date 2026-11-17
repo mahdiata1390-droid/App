@@ -18,6 +18,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.view.WindowManager.LayoutParams
 import java.util.Locale
+import kotlin.math.roundToInt
 import org.json.JSONArray
 
 class MainActivity : Activity() {
@@ -231,7 +232,7 @@ class MainActivity : Activity() {
             val ms = ((System.nanoTime() - start) / 1_000_000L).coerceAtLeast(1L)
             runOnUiThread {
                 if (isFinishing || isDestroyedCompat()) return@runOnUiThread
-                pingView.text = if (ok) "LATENCY\n${ms} ms" else "LATENCY\nTIMEOUT"
+                pingView.text = if (ok) "NET TEST\n${ms} ms" else "NET TEST\nTIMEOUT"
             }
         }.also { it.start() }
     }
@@ -306,6 +307,8 @@ class MainActivity : Activity() {
 
     private fun loadGames() {
         val pm = packageManager
+        val density = resources.displayMetrics.density
+        fun dp(value: Int): Int = (value * density).roundToInt()
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val apps = pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
             .filter { it.activityInfo.packageName != packageName }
@@ -323,17 +326,17 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(18, 12, 10, 12)
+                setPadding(dp(18), dp(12), dp(10), dp(12))
                 background = getDrawable(R.drawable.neo_card)
                 elevation = 6f
             }
             val icon = ImageView(this).apply {
                 setImageDrawable(ri.loadIcon(pm))
-                layoutParams = LinearLayout.LayoutParams(44, 44)
+                layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
             }
             val nameBox = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = 12 }
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(12) }
             }
             val name = TextView(this).apply {
                 text = ri.loadLabel(pm)
@@ -375,7 +378,7 @@ class MainActivity : Activity() {
             row.addView(profile)
             row.addView(launch)
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.bottomMargin = 12
+            lp.bottomMargin = dp(12)
             gamesContainer.addView(row, lp)
         }
     }
@@ -446,15 +449,19 @@ class MainActivity : Activity() {
     }
 
     private fun openDndSettings() {
-        startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        runCatching { startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
+            .onFailure { statusView.text = "DND SETTINGS ARE NOT AVAILABLE ON THIS DEVICE" }
     }
 
     private fun openUsageSettings() {
-        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        runCatching { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+            .onFailure { statusView.text = "USAGE ACCESS SETTINGS ARE NOT AVAILABLE" }
     }
 
     private fun openOverlaySettings() {
-        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)))
+        runCatching {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)))
+        }.onFailure { statusView.text = "OVERLAY SETTINGS ARE NOT AVAILABLE ON THIS DEVICE" }
     }
 
     private fun openNotificationPermission() {
