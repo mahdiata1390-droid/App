@@ -76,10 +76,10 @@ class MainActivity : Activity() {
         startLiveDashboard()
         tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
         sounds = SoundPool.Builder().setMaxStreams(3).build().also {
-            boostSound = it.load(this, R.raw.sfx_boost, 1)
-            tapSound = it.load(this, R.raw.sfx_tap, 1)
-            successSound = it.load(this, R.raw.sfx_success, 1)
-            errorSound = it.load(this, R.raw.sfx_error, 1)
+            boostSound = loadRawSound(it, "sfx_boost")
+            tapSound = loadRawSound(it, "sfx_tap")
+            successSound = loadRawSound(it, "sfx_success")
+            errorSound = loadRawSound(it, "sfx_error")
         }
 
         boostView.setOnClickListener {
@@ -283,6 +283,11 @@ class MainActivity : Activity() {
         loadGames()
         updatePermissionStates()
         showHistorySummary()
+    }
+
+    private fun loadRawSound(pool: SoundPool, name: String): Int {
+        val id = resources.getIdentifier(name, "raw", packageName)
+        return if (id != 0) pool.load(this, id, 1) else 0
     }
 
     private fun feedback(strong: Boolean) {
