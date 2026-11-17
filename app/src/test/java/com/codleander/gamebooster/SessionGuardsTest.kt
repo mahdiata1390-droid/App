@@ -9,7 +9,8 @@ class SessionGuardsTest {
     @Test
     fun capElapsed_never_counts_negative_or_excessive_time() {
         assertEquals(0L, SessionGuards.capElapsed(100L, 200L, 4000L))
-        assertEquals(4000L, SessionGuards.capElapsed(10_000L, 0L, 4000L))
+        assertEquals(0L, SessionGuards.capElapsed(10_000L, 0L, 4000L))
+        assertEquals(4000L, SessionGuards.capElapsed(10_000L, 6_000L, 4000L))
         assertEquals(4000L, SessionGuards.capElapsed(10_000L, 1_000L, 4000L))
         assertEquals(2500L, SessionGuards.capElapsed(3_500L, 1_000L, 4000L))
     }
