@@ -15,6 +15,7 @@ import android.widget.*
 import android.media.ToneGenerator
 import android.media.AudioManager
 import java.util.Locale
+import org.json.JSONArray
 
 class MainActivity : Activity() {
     private lateinit var ramView: TextView
@@ -29,6 +30,7 @@ class MainActivity : Activity() {
     private lateinit var dndState: TextView
     private lateinit var usageState: TextView
     private lateinit var overlayState: TextView
+    private lateinit var historyHint: TextView
     private var tone: ToneGenerator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,6 +46,7 @@ class MainActivity : Activity() {
         dndState = findViewById(R.id.dndPermissionState)
         usageState = findViewById(R.id.usagePermissionState)
         overlayState = findViewById(R.id.overlayPermissionState)
+        historyHint = findViewById(R.id.historyHint)
         tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
 
         boostView.setOnClickListener {
@@ -73,7 +76,7 @@ class MainActivity : Activity() {
         updateStats()
         loadGames()
         updatePermissionStates()
-        showLastSessionOrReady()
+        showHistorySummary()
     }
 
     private fun feedback(strong: Boolean) {
@@ -221,6 +224,45 @@ class MainActivity : Activity() {
 
     private fun openOverlaySettings() {
         startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)))
+    }
+
+    private fun showHistorySummary() {
+        val prefs = getSharedPreferences("booster_history", MODE_PRIVATE)
+        val sessions = runCatching { JSONArray(prefs.getString("sessions", "[]")) }.getOrDefault(JSONArray())
+        val now = java.time.LocalDate.now()
+        var todayMs = 0L
+        var monthMs = 0L
+        val byGame = linkedMapOf<String, Long>()
+        for (i in 0 until sessions.length()) {
+            val o = sessions.optJSONObject(i) ?: continue
+            val start = o.optLong("start", 0L)
+            val duration = o.optLong("duration", 0L)
+            if (start <= 0L || duration <= 0L) continue
+            val date = java.time.Instant.ofEpochMilli(start).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            if (date == now) todayMs += duration
+            if (date.year == now.year && date.month == now.month) {
+                monthMs += duration
+                val label = o.optString("label", "Unknown")
+                byGame[label] = (byGame[label] ?: 0L) + duration
+            }
+        }
+        val today = formatPlayTime(todayMs)
+        val month = formatPlayTime(monthMs)
+        val top = byGame.entries.sortedByDescending { it.value }.take(3).joinToString("  •  ") {
+            "${it.key}: ${formatPlayTime(it.value)}"
+        }
+        historyHint.text = "TODAY  $today\nTHIS MONTH  $month\n" + if (top.isBlank()) "No sessions this month yet." else top
+    }
+
+    private fun formatPlayTime(ms: Long): String {
+        val totalMinutes = ms / 60000L
+        val hours = totalMinutes / 60L
+        val minutes = totalMinutes % 60L
+        return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+    }
+
+    private fun updateHistoryOnly() {
+        showHistorySummary()
     }
 
     private fun showLastSessionOrReady() {
