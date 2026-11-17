@@ -30,6 +30,8 @@ class BoosterService : Service() {
     private var windowManager: WindowManager? = null
     private var sessionStartedAt = 0L
     private var peakThermalStatus = PowerManager.THERMAL_STATUS_NONE
+    private var sessionStartBrightness = -1f
+    private var sessionStartAt = 0L
 
     private val poller = object : Runnable {
         override fun run() {
@@ -69,6 +71,8 @@ class BoosterService : Service() {
             else -> {
                 targetPackage = intent?.getStringExtra(EXTRA_PACKAGE) ?: targetPackage
                 if (sessionStartedAt == 0L) sessionStartedAt = System.currentTimeMillis()
+                if (sessionStartAt == 0L) sessionStartAt = sessionStartedAt
+                if (Settings.System.canWrite(this)) sessionStartBrightness = Settings.System.getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1f)
                 if (targetPackage != null && Settings.canDrawOverlays(this)) showBubble()
                 handler.removeCallbacks(poller)
                 handler.post(poller)
@@ -82,6 +86,7 @@ class BoosterService : Service() {
         removeBubble()
         saveSessionHistory()
         restoreDnd()
+        restoreBrightness()
         super.onDestroy()
     }
 
@@ -223,6 +228,12 @@ class BoosterService : Service() {
     private fun removeBubble() {
         bubble?.let { view -> runCatching { windowManager?.removeView(view) } }
         bubble = null
+    }
+
+    private fun restoreBrightness() {
+        if (sessionStartBrightness >= 0f && Settings.System.canWrite(this)) {
+            runCatching { Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, sessionStartBrightness.toInt()) }
+        }
     }
 
     private fun restoreDnd() {
