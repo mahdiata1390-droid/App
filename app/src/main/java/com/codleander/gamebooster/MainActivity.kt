@@ -154,7 +154,11 @@ class MainActivity : Activity() {
             val current = runCatching {
                 Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
             }.getOrNull()
-            if (SessionGuards.shouldRestoreLong(true, previous, current, 30L * 60L * 1000L)) {
+            val applied = runtime.getLong(
+                "applied_screen_timeout",
+                30L * 60L * 1000L
+            )
+            if (SessionGuards.shouldRestoreLong(true, previous, current, applied)) {
                 runCatching {
                     Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, previous)
                 }
@@ -175,7 +179,7 @@ class MainActivity : Activity() {
             }
         }
 
-        if (!target.isNullOrBlank() && recoveredDuration > 0L) {
+        if (!target.isNullOrBlank() && activePlayMs > 0L) {
             val historyPrefs = getSharedPreferences("booster_history", MODE_PRIVATE)
             val sessions = runCatching {
                 JSONArray(historyPrefs.getString("sessions", "[]"))
@@ -427,13 +431,26 @@ class MainActivity : Activity() {
         selectedLabel = label
         selectedProfile = loadProfile(pkg)
 
-        val prefs = getSharedPreferences("game_profiles", MODE_PRIVATE)
-        prefs.edit()
-            .putString("${pkg}_label", label)
-            .putInt("${pkg}_launches", prefs.getInt("${pkg}_launches", 0) + 1)
-            .apply()
+        val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
+        if (launchIntent == null) {
+            statusView.text = "GAME COULD NOT BE LAUNCHED • $label"
+            return
+        }
 
-        var sessionStarted = false
+        val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
+        val activePackage = runtime.getString("target_package", null)
+        val activeStart = runtime.getLong("session_started_at", 0L)
+        val alreadyActive = activeStart > 0L && activePackage == pkg
+
+        val prefs = getSharedPreferences("game_profiles", MODE_PRIVATE)
+        if (!alreadyActive) {
+            prefs.edit()
+                .putString("${pkg}_label", label)
+                .putInt("${pkg}_launches", prefs.getInt("${pkg}_launches", 0) + 1)
+                .apply()
+        }
+
+        var sessionRequested = false
         if (hasUsageAccess()) {
             val serviceIntent = Intent(this, BoosterService::class.java).apply {
                 action = BoosterService.ACTION_START
@@ -444,24 +461,28 @@ class MainActivity : Activity() {
                 putExtra("profile_hud", selectedProfile.hud)
             }
             try {
-                if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
-                sessionStartedAt = System.currentTimeMillis()
-                sessionStarted = true
-                statusView.text = "BOOST SESSION ACTIVE • " + label.uppercase(Locale.ROOT)
+                if (!alreadyActive) {
+                    if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
+                }
+                sessionStartedAt = if (alreadyActive) activeStart else System.currentTimeMillis()
+                sessionRequested = true
+                statusView.text = "BOOST STARTING • " + label.uppercase(Locale.ROOT)
             } catch (e: SecurityException) {
-                statusView.text = "GAME LAUNCHED • BOOST SERVICE PERMISSION BLOCKED"
+                statusView.text = "GAME LAUNCHING • BOOST SERVICE PERMISSION BLOCKED"
             } catch (e: RuntimeException) {
-                statusView.text = "GAME LAUNCHED • BOOST SERVICE COULD NOT START"
+                statusView.text = "GAME LAUNCHING • BOOST SERVICE COULD NOT START"
             }
         } else {
-            statusView.text = "GAME LAUNCHED • ENABLE GAME DETECTION FOR BOOST SESSION"
+            statusView.text = "GAME LAUNCHED • ENABLE USAGE ACCESS FOR BOOST"
         }
 
-        if (!sessionStarted) sessionStartedAt = 0L
+        if (!sessionRequested) sessionStartedAt = 0L
 
-        packageManager.getLaunchIntentForPackage(pkg)?.let {
-            it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(it)
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching {
+            startActivity(launchIntent)
+        }.onFailure {
+            statusView.text = "GAME COULD NOT BE LAUNCHED • $label"
         }
     }
 
