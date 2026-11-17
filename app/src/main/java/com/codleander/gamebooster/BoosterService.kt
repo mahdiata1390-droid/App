@@ -3,6 +3,7 @@ package com.codleander.gamebooster
 import android.app.*
 import android.app.usage.UsageStatsManager
 import android.content.*
+import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.drawable.Icon
 import android.graphics.PixelFormat
@@ -41,6 +42,7 @@ class BoosterService : Service() {
     private var profileHud = true
     private var overlayPanel: LinearLayout? = null
     private var sessionPausedAt = 0L
+    private var dndChangedByService = false
 
     private val poller = object : Runnable {
         override fun run() {
@@ -51,7 +53,8 @@ class BoosterService : Service() {
             if (foreground == target) {
                 updateBubble(true)
                 handler.postDelayed(this, POLL_MS)
-            } else if (foreground != null && foreground != packageName) {
+            } else if (foreground != null && foreground != packageName &&
+                System.currentTimeMillis() - sessionStartedAt >= 15000L) {
                 stopSelf()
             } else {
                 handler.postDelayed(this, POLL_MS)
@@ -63,7 +66,7 @@ class BoosterService : Service() {
         super.onCreate()
         createChannel()
         val notification = buildNotification("Game session monitor ready")
-        if (Build.VERSION.SDK_INT >= 29) {
+        if (Build.VERSION.SDK_INT >= 34) {
             startForeground(
                 NOTIFICATION_ID,
                 notification,
@@ -85,6 +88,17 @@ class BoosterService : Service() {
                 profileAwake = intent?.getBooleanExtra("profile_awake", true) ?: true
                 profileBrightness = intent?.getBooleanExtra("profile_brightness", false) ?: false
                 profileHud = intent?.getBooleanExtra("profile_hud", true) ?: true
+                if (profileDnd) {
+                    val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                    if (nm.isNotificationPolicyAccessGranted &&
+                        nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_PRIORITY) {
+                        getSharedPreferences("booster", MODE_PRIVATE).edit()
+                            .putInt("previous_interruption_filter", nm.currentInterruptionFilter)
+                            .apply()
+                        runCatching { nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY) }
+                        dndChangedByService = true
+                    }
+                }
                 if (profileBrightness && Settings.System.canWrite(this)) {
                     sessionStartBrightness = Settings.System.getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1f)
                     runCatching { Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 255) }
@@ -283,6 +297,7 @@ class BoosterService : Service() {
     }
 
     private fun restoreDnd() {
+        if (!dndChangedByService) return
         val prefs = getSharedPreferences("booster", MODE_PRIVATE)
         val previous = prefs.getInt("previous_interruption_filter", -1)
         if (previous >= 0) {
