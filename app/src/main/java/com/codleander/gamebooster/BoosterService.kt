@@ -41,6 +41,7 @@ class BoosterService : Service() {
     private var sessionStartAt = 0L
     private var activePlayMs = 0L
     private var lastPollAt = 0L
+    private var lastForegroundPackage: String? = null
     private var profileDnd = true
     private var profileAwake = true
     private var profileBrightness = false
@@ -48,12 +49,12 @@ class BoosterService : Service() {
     private var overlayPanel: LinearLayout? = null
     private var sessionPausedAt = 0L
     private var dndChangedByService = false
+    private var dndChangedByUser = false
     private var brightnessChangedByService = false
 
     private val poller = object : Runnable {
         override fun run() {
-            val target = targetPackage
-            if (target == null) return
+            val target = targetPackage ?: return
             val now = System.currentTimeMillis()
             val foreground = foregroundPackage()
             if (foreground == target && lastPollAt > 0L) {
@@ -63,15 +64,16 @@ class BoosterService : Service() {
             updateThermalPeak()
             enforceScreenTimeout()
             enforceBrightnessLock()
+            persistRuntimeHeartbeat()
+
             if (foreground == target) {
                 updateBubble(true)
-                handler.postDelayed(this, POLL_MS)
             } else if (foreground != null && foreground != packageName &&
-                System.currentTimeMillis() - sessionStartedAt >= 15000L) {
+                now - sessionStartedAt >= 15000L) {
                 stopSelf()
-            } else {
-                handler.postDelayed(this, POLL_MS)
+                return
             }
+            handler.postDelayed(this, POLL_MS)
         }
     }
 
@@ -113,45 +115,91 @@ class BoosterService : Service() {
                 sessionStartAt = sessionStartedAt
                 activePlayMs = 0L
                 lastPollAt = sessionStartedAt
-                getSharedPreferences("booster_runtime", MODE_PRIVATE).edit()
-                    .putLong("session_started_at", sessionStartedAt)
-                    .putString("target_package", targetPackage)
-                    .apply()
-
-                profileDnd = intent?.getBooleanExtra("profile_dnd", true) ?: true
                 profileAwake = intent?.getBooleanExtra("profile_awake", true) ?: true
                 profileBrightness = intent?.getBooleanExtra("profile_brightness", false) ?: false
                 profileHud = intent?.getBooleanExtra("profile_hud", true) ?: true
+                dndChangedByService = false
+                dndChangedByUser = false
+                brightnessChangedByService = false
+                screenTimeoutChangedByService = false
+                lastForegroundPackage = null
+
+                val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
+                val runtimeEditor = runtime.edit()
+                    .putLong("session_started_at", sessionStartedAt)
+                    .putString("target_package", targetPackage)
+                    .putString("target_label", runCatching {
+                        packageManager.getApplicationLabel(
+                            packageManager.getApplicationInfo(targetPackage!!, 0)
+                        ).toString()
+                    }.getOrDefault(targetPackage ?: "Unknown Game"))
+                    .putLong("active_play_ms", 0L)
+                    .putLong("last_heartbeat", System.currentTimeMillis())
+                    .putInt("peak_thermal", PowerManager.THERMAL_STATUS_NONE)
+
                 if (profileDnd) {
                     val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
                     if (nm.isNotificationPolicyAccessGranted &&
-                        nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_PRIORITY) {
-                        getSharedPreferences("booster", MODE_PRIVATE).edit()
-                            .putInt("previous_interruption_filter", nm.currentInterruptionFilter)
-                            .apply()
-                        if (runCatching { nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY) }.isSuccess) {
+                        nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_PRIORITY
+                    ) {
+                        val previous = nm.currentInterruptionFilter
+                        val changed = runCatching {
+                            nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
+                        }.isSuccess
+                        if (changed) {
                             dndChangedByService = true
+                            runtimeEditor
+                                .putInt("previous_interruption_filter", previous)
+                                .putInt("expected_interruption_filter", NotificationManager.INTERRUPTION_FILTER_PRIORITY)
+                                .putBoolean("dnd_changed", true)
                         }
                     }
                 }
+
                 if (profileAwake && Settings.System.canWrite(this)) {
-                    sessionStartScreenTimeout = Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, -1L)
-                    if (sessionStartScreenTimeout > 0L && sessionStartScreenTimeout < SCREEN_ON_TIMEOUT_MS) {
+                    sessionStartScreenTimeout = Settings.System.getLong(
+                        contentResolver,
+                        Settings.System.SCREEN_OFF_TIMEOUT,
+                        -1L
+                    )
+                    if (sessionStartScreenTimeout > 0L) {
                         runCatching {
-                            Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, SCREEN_ON_TIMEOUT_MS)
+                            Settings.System.putLong(
+                                contentResolver,
+                                Settings.System.SCREEN_OFF_TIMEOUT,
+                                SCREEN_ON_TIMEOUT_MS
+                            )
                             screenTimeoutChangedByService = true
+                            runtimeEditor
+                                .putLong("previous_screen_timeout", sessionStartScreenTimeout)
+                                .putBoolean("screen_timeout_changed", true)
                         }
                     }
                 }
+
                 if (profileBrightness && Settings.System.canWrite(this)) {
-                    sessionStartBrightness = Settings.System.getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1f)
+                    sessionStartBrightness = Settings.System.getFloat(
+                        contentResolver,
+                        Settings.System.SCREEN_BRIGHTNESS,
+                        -1f
+                    )
                     if (sessionStartBrightness >= 0f) {
+                        val original = sessionStartBrightness.toInt().coerceIn(0, 255)
                         runCatching {
-                            Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 255)
+                            Settings.System.putInt(
+                                contentResolver,
+                                Settings.System.SCREEN_BRIGHTNESS,
+                                original
+                            )
                             brightnessChangedByService = true
+                            runtimeEditor
+                                .putInt("previous_brightness", original)
+                                .putBoolean("brightness_changed", true)
                         }
                     }
                 }
+
+                runtimeEditor.apply()
                 if (targetPackage != null && Settings.canDrawOverlays(this) && profileHud) showBubble()
                 handler.removeCallbacks(poller)
                 handler.post(poller)
@@ -164,6 +212,7 @@ class BoosterService : Service() {
         handler.removeCallbacksAndMessages(null)
         removeToolbox()
         removeBubble()
+        persistRuntimeHeartbeat()
         saveSessionHistory()
         restoreDnd()
         restoreScreenTimeout()
@@ -179,10 +228,11 @@ class BoosterService : Service() {
     private fun foregroundPackage(): String? {
         val usm = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
         val end = System.currentTimeMillis()
-        val events = usm.queryEvents(end - 8000L, end)
+        val events = usm.queryEvents(end - 15_000L, end)
         val event = android.app.usage.UsageEvents.Event()
-        var latestPkg: String? = null
+        var latestPkg = lastForegroundPackage
         var latestTime = 0L
+
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             val foregroundEvent =
@@ -194,7 +244,9 @@ class BoosterService : Service() {
                 latestPkg = event.packageName
             }
         }
-        return latestPkg
+
+        if (latestPkg != null) lastForegroundPackage = latestPkg
+        return lastForegroundPackage
     }
 
     private fun showBubble() {
@@ -211,10 +263,6 @@ class BoosterService : Service() {
             contentDescription = "Game Booster floating control"
             setOnClickListener {
                 openToolbox()
-                val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                if (nm.isNotificationPolicyAccessGranted && profileDnd) {
-                    nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
-                }
             }
             setOnLongClickListener {
                 stopSelf()
@@ -284,7 +332,13 @@ class BoosterService : Service() {
         val panel=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(18,18,18,18); background=getDrawable(R.drawable.neo_card); elevation=20f }
         val title=TextView(this).apply { text="⚡  GAME TOOLBOX"; textSize=16f; setTextColor(Color.WHITE); setPadding(0,0,0,12) }
         val timer=TextView(this).apply { textSize=14f; setTextColor(0xFF59D8FF.toInt()) }
-        val dnd=Button(this).apply { text="DND: ${if(profileDnd) "ON" else "OFF"}"; setOnClickListener { toggleDnd(); text="DND: ${if(profileDnd) "ON" else "OFF"}" } }
+        val dnd=Button(this).apply {
+            text = dndButtonLabel()
+            setOnClickListener {
+                toggleDnd()
+                text = dndButtonLabel()
+            }
+        }
         val stop=Button(this).apply { text="END SESSION"; setOnClickListener { stopSelf() } }
         val close=Button(this).apply { text="CLOSE"; setOnClickListener { removeToolbox() } }
         panel.addView(title); panel.addView(timer); panel.addView(dnd); panel.addView(stop); panel.addView(close)
@@ -306,6 +360,8 @@ class BoosterService : Service() {
                     NotificationManager.INTERRUPTION_FILTER_PRIORITY
                 }
             )
+        }.onSuccess {
+            dndChangedByUser = true
         }
     }
     private fun removeToolbox() { overlayPanel?.let { runCatching { windowManager?.removeView(it) } }; overlayPanel=null }
@@ -340,11 +396,34 @@ class BoosterService : Service() {
 
     private fun enforceBrightnessLock() {
         if (!profileBrightness || !brightnessChangedByService || !Settings.System.canWrite(this)) return
+        val locked = sessionStartBrightness.toInt().coerceIn(0, 255)
         val current = runCatching {
             Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
         }.getOrNull() ?: return
-        if (current != 255) {
-            runCatching { Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 255) }
+        if (current != locked) {
+            runCatching {
+                Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, locked)
+            }
+        }
+    }
+
+    private fun persistRuntimeHeartbeat() {
+        if (sessionStartedAt <= 0L || targetPackage.isNullOrBlank()) return
+        getSharedPreferences("booster_runtime", MODE_PRIVATE).edit()
+            .putLong("last_heartbeat", System.currentTimeMillis())
+            .putLong("active_play_ms", activePlayMs)
+            .putInt("peak_thermal", peakThermalStatus)
+            .apply()
+    }
+
+    private fun dndButtonLabel(): String {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        if (!nm.isNotificationPolicyAccessGranted) return "DND: N/A"
+        return when (nm.currentInterruptionFilter) {
+            NotificationManager.INTERRUPTION_FILTER_PRIORITY,
+            NotificationManager.INTERRUPTION_FILTER_ALARMS,
+            NotificationManager.INTERRUPTION_FILTER_NONE -> "DND: ON"
+            else -> "DND: OFF"
         }
     }
 
@@ -363,6 +442,7 @@ class BoosterService : Service() {
         sessionStartAt = 0L
         activePlayMs = 0L
         lastPollAt = 0L
+        lastForegroundPackage = null
         sessionStartBrightness = -1f
         brightnessChangedByService = false
         sessionStartScreenTimeout = -1L
@@ -429,20 +509,27 @@ class BoosterService : Service() {
     }
 
     private fun restoreDnd() {
-        val prefs = getSharedPreferences("booster", MODE_PRIVATE)
-        val previous = prefs.getInt("previous_interruption_filter", -1)
-        if (previous < 0) {
+        val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
+        val previous = runtime.getInt("previous_interruption_filter", -1)
+        val expected = runtime.getInt(
+            "expected_interruption_filter",
+            NotificationManager.INTERRUPTION_FILTER_PRIORITY
+        )
+        if (previous < 0 || !dndChangedByService || dndChangedByUser) {
             dndChangedByService = false
+            dndChangedByUser = false
             return
         }
-        if (dndChangedByService) {
-            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            if (nm.isNotificationPolicyAccessGranted) {
-                runCatching { nm.setInterruptionFilter(previous) }
-            }
+
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        if (nm.isNotificationPolicyAccessGranted &&
+            nm.currentInterruptionFilter == expected
+        ) {
+            runCatching { nm.setInterruptionFilter(previous) }
         }
-        prefs.edit().remove("previous_interruption_filter").apply()
+
         dndChangedByService = false
+        dndChangedByUser = false
     }
 
     private fun createChannel() {
