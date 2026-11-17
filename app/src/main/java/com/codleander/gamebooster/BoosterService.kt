@@ -10,6 +10,9 @@ import android.os.*
 import android.provider.Settings
 import android.view.*
 import android.widget.TextView
+import android.widget.LinearLayout
+import android.widget.Button
+import android.graphics.drawable.GradientDrawable
 import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
@@ -37,6 +40,7 @@ class BoosterService : Service() {
     private var profileBrightness = false
     private var profileHud = true
     private var overlayPanel: LinearLayout? = null
+    private var sessionPausedAt = 0L
 
     private val poller = object : Runnable {
         override fun run() {
@@ -201,6 +205,25 @@ class BoosterService : Service() {
     }
 
     private fun openToolbox() {
+        if (overlayPanel != null) { removeToolbox(); return }
+        val wm=windowManager ?: return
+        val panel=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(18,18,18,18); background=getDrawable(R.drawable.neo_card); elevation=20f }
+        val title=TextView(this).apply { text="⚡  GAME TOOLBOX"; textSize=16f; setTextColor(Color.WHITE); setPadding(0,0,0,12) }
+        val timer=TextView(this).apply { textSize=14f; setTextColor(0xFF59D8FF.toInt()) }
+        val dnd=Button(this).apply { text="DND: ${if(profileDnd) "ON" else "OFF"}"; setOnClickListener { toggleDnd(); text="DND: ${if(profileDnd) "ON" else "OFF"}" } }
+        val stop=Button(this).apply { text="END SESSION"; setOnClickListener { stopSelf() } }
+        val close=Button(this).apply { text="CLOSE"; setOnClickListener { removeToolbox() } }
+        panel.addView(title); panel.addView(timer); panel.addView(dnd); panel.addView(stop); panel.addView(close)
+        val density=resources.displayMetrics.density
+        val lp=WindowManager.LayoutParams((230*density).toInt(), WindowManager.LayoutParams.WRAP_CONTENT, if(Build.VERSION.SDK_INT>=26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT).apply { gravity=Gravity.TOP or Gravity.END; x=(14*density).toInt(); y=(250*density).toInt() }
+        overlayPanel=panel; wm.addView(panel,lp)
+        handler.post(object:Runnable{override fun run(){ if(overlayPanel!=null){ val sec=(System.currentTimeMillis()-sessionStartedAt)/1000; timer.text=String.format(Locale.US,"SESSION  %02d:%02d:%02d",sec/3600,(sec%3600)/60,sec%60); handler.postDelayed(this,1000)}}})
+    }
+
+    private fun toggleDnd() { if(!profileDnd) return; val nm=getSystemService(NOTIFICATION_SERVICE) as NotificationManager; if(nm.isNotificationPolicyAccessGranted) nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE) }
+    private fun removeToolbox() { overlayPanel?.let { runCatching { windowManager?.removeView(it) } }; overlayPanel=null }
+
+    private fun openToolboxLegacy() {
         val tv = bubble as? TextView ?: return
         tv.text = "⚡\nTOOLS"
         tv.setOnClickListener { stopSelf() }
