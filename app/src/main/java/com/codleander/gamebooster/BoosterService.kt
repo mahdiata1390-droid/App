@@ -120,8 +120,9 @@ class BoosterService : Service() {
                         getSharedPreferences("booster", MODE_PRIVATE).edit()
                             .putInt("previous_interruption_filter", nm.currentInterruptionFilter)
                             .apply()
-                        runCatching { nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY) }
-                        dndChangedByService = true
+                        if (runCatching { nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY) }.isSuccess) {
+                            dndChangedByService = true
+                        }
                     }
                 }
                 if (profileAwake && Settings.System.canWrite(this)) {
@@ -344,6 +345,7 @@ class BoosterService : Service() {
         removeBubble()
         saveSessionHistory()
         restoreDnd()
+        restoreScreenTimeout()
         restoreBrightness()
         getSharedPreferences("booster_runtime", MODE_PRIVATE).edit().clear().apply()
 
@@ -415,16 +417,20 @@ class BoosterService : Service() {
     }
 
     private fun restoreDnd() {
-        if (!dndChangedByService) return
         val prefs = getSharedPreferences("booster", MODE_PRIVATE)
         val previous = prefs.getInt("previous_interruption_filter", -1)
-        if (previous >= 0) {
+        if (previous < 0) {
+            dndChangedByService = false
+            return
+        }
+        if (dndChangedByService) {
             val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             if (nm.isNotificationPolicyAccessGranted) {
-                nm.setInterruptionFilter(previous)
+                runCatching { nm.setInterruptionFilter(previous) }
             }
-            prefs.edit().remove("previous_interruption_filter").apply()
         }
+        prefs.edit().remove("previous_interruption_filter").apply()
+        dndChangedByService = false
     }
 
     private fun createChannel() {
