@@ -25,12 +25,15 @@ class BoosterService : Service() {
     private var targetPackage: String? = null
     private var bubble: View? = null
     private var windowManager: WindowManager? = null
+    private var sessionStartedAt = 0L
+    private var peakThermalStatus = PowerManager.THERMAL_STATUS_NONE
 
     private val poller = object : Runnable {
         override fun run() {
             val target = targetPackage
             if (target == null) return
             val foreground = foregroundPackage()
+            updateThermalPeak()
             if (foreground == target) {
                 updateBubble(true)
                 handler.postDelayed(this, POLL_MS)
@@ -62,6 +65,7 @@ class BoosterService : Service() {
             ACTION_STOP -> stopSelf()
             else -> {
                 targetPackage = intent?.getStringExtra(EXTRA_PACKAGE) ?: targetPackage
+                if (sessionStartedAt == 0L) sessionStartedAt = System.currentTimeMillis()
                 if (targetPackage != null && Settings.canDrawOverlays(this)) showBubble()
                 handler.removeCallbacks(poller)
                 handler.post(poller)
@@ -73,6 +77,7 @@ class BoosterService : Service() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         removeBubble()
+        saveSessionHistory()
         restoreDnd()
         super.onDestroy()
     }
@@ -181,6 +186,25 @@ class BoosterService : Service() {
         (bubble as? TextView)?.text = if (active) "⚡" else "•"
     }
 
+    private fun updateThermalPeak() {
+        if (Build.VERSION.SDK_INT >= 29) {
+            val status = (getSystemService(POWER_SERVICE) as PowerManager).currentThermalStatus
+            if (status > peakThermalStatus) peakThermalStatus = status
+        }
+    }
+
+    private fun saveSessionHistory() {
+        if (sessionStartedAt == 0L || targetPackage == null) return
+        val duration = (System.currentTimeMillis() - sessionStartedAt).coerceAtLeast(0L)
+        val label = packageManager.getApplicationLabel(packageManager.getApplicationInfo(targetPackage!!, 0)).toString()
+        getSharedPreferences("booster_history", MODE_PRIVATE).edit()
+            .putString("last_label", label)
+            .putString("last_package", targetPackage)
+            .putLong("last_duration_ms", duration)
+            .putInt("last_peak_thermal", peakThermalStatus)
+            .apply()
+    }
+
     private fun removeBubble() {
         bubble?.let { view -> runCatching { windowManager?.removeView(view) } }
         bubble = null
@@ -225,8 +249,18 @@ class BoosterService : Service() {
             .setSmallIcon(R.drawable.ic_lightning)
             .setContentTitle("Game Booster")
             .setContentText(text)
-            .setOngoing(true)
+             .setOngoing(true)
             .setContentIntent(pending)
+            .addAction(Notification.Action.Builder(
+                Icon.createWithResource(this, R.drawable.ic_lightning),
+                "STOP",
+                PendingIntent.getService(
+                    this,
+                    1,
+                    Intent(this, BoosterService::class.java).setAction(ACTION_STOP),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            ).build())
             .build()
     }
 }
