@@ -153,7 +153,7 @@ class MainActivity : Activity() {
             val current = runCatching {
                 Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
             }.getOrNull()
-            if (previous > 0L && current == 30L * 60L * 1000L) {
+            if (SessionGuards.shouldRestoreLong(true, previous, current, 30L * 60L * 1000L)) {
                 runCatching {
                     Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, previous)
                 }
@@ -167,7 +167,7 @@ class MainActivity : Activity() {
             val current = runCatching {
                 Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
             }.getOrNull()
-            if (previous >= 0 && current == previous) {
+            if (SessionGuards.shouldRestoreInt(true, previous, current, previous)) {
                 runCatching {
                     Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, previous)
                 }
