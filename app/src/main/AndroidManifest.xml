@@ -22,9 +22,9 @@
 
     <application
         android:theme="@style/Theme.GameBooster"
-        android:icon="@drawable/ic_game_booster"
+        android:icon="@mipmap/ic_launcher"
         android:label="Game Booster"
-        android:roundIcon="@drawable/ic_game_booster"
+        android:roundIcon="@mipmap/ic_launcher"
         android:allowBackup="true"
         android:supportsRtl="true">
 
