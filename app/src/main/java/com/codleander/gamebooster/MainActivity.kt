@@ -14,6 +14,10 @@ import android.view.animation.AnimationUtils
 import android.widget.*
 import android.media.ToneGenerator
 import android.media.AudioManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.view.WindowManager.LayoutParams
+import android.graphics.drawable.GradientDrawable
 import java.util.Locale
 import org.json.JSONArray
 
@@ -31,6 +35,10 @@ class MainActivity : Activity() {
     private lateinit var usageState: TextView
     private lateinit var overlayState: TextView
     private lateinit var historyHint: TextView
+    private lateinit var timerView: TextView
+    private lateinit var networkView: TextView
+    private var sessionStartedAt = 0L
+    private val uiHandler = Handler(Looper.getMainLooper())
     private var tone: ToneGenerator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +55,10 @@ class MainActivity : Activity() {
         usageState = findViewById(R.id.usagePermissionState)
         overlayState = findViewById(R.id.overlayPermissionState)
         historyHint = findViewById(R.id.historyHint)
+        timerView = findViewById(R.id.sessionTimer)
+        networkView = findViewById(R.id.networkStatus)
+        applyGlobalUiPolish()
+        startLiveDashboard()
         tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
 
         boostView.setOnClickListener {
@@ -67,9 +79,44 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        uiHandler.removeCallbacksAndMessages(null)
         tone?.release()
         tone = null
         super.onDestroy()
+    }
+
+    private fun startLiveDashboard() {
+        uiHandler.post(object : Runnable {
+            override fun run() {
+                updateStats()
+                updateNetwork()
+                updateSessionTimer()
+                uiHandler.postDelayed(this, 1000L)
+            }
+        })
+    }
+
+    private fun applyGlobalUiPolish() {
+        window.addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    private fun updateSessionTimer() {
+        if (sessionStartedAt <= 0L) { timerView.text = "SESSION\n00:00:00"; return }
+        val total = ((System.currentTimeMillis() - sessionStartedAt) / 1000L).coerceAtLeast(0L)
+        timerView.text = String.format(Locale.US, "SESSION\n%02d:%02d:%02d", total/3600, (total%3600)/60, total%60)
+    }
+
+    private fun updateNetwork() {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val n = cm.activeNetwork
+        val caps = cm.getNetworkCapabilities(n)
+        val type = when {
+            caps == null -> "OFFLINE"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WIFI"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "MOBILE"
+            else -> "ONLINE"
+        }
+        networkView.text = "NETWORK\n$type"
     }
 
     private fun refreshAll() {
@@ -203,6 +250,8 @@ class MainActivity : Activity() {
                 putExtra(BoosterService.EXTRA_PACKAGE, pkg)
             }
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
+            sessionStartedAt = System.currentTimeMillis()
+            getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON)
             statusView.text = "BOOST SESSION ACTIVE • " + label.uppercase(Locale.ROOT)
         } else {
             statusView.text = "GAME LAUNCHED • ENABLE OVERLAY FOR FLOATING BOOST"
