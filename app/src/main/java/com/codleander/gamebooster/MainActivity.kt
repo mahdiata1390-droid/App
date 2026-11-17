@@ -63,7 +63,14 @@ class MainActivity : Activity() {
         startLiveDashboard()
         tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
 
-        boostView.setOnClickListener {\n            pulse(boostView); pulse(lightningIcon); feedback(true)\n            val pkg = selectedPackage\n            val label = selectedLabel\n            if (pkg != null && label != null) startGameSession(pkg, label)\n            else statusView.text = "SELECT A GAME BELOW TO START A BOOST SESSION"\n        }\n        findViewById<Button>(R.id.dnd).setOnClickListener { pulse(it); feedback(false); openDndSettings() }
+        boostView.setOnClickListener {
+            pulse(boostView); pulse(lightningIcon); feedback(true)
+            val pkg = selectedPackage
+            val label = selectedLabel
+            if (pkg != null && label != null) startGameSession(pkg, label)
+            else statusView.text = "SELECT A GAME BELOW TO START A BOOST SESSION"
+        }
+        findViewById<Button>(R.id.dnd).setOnClickListener { pulse(it); feedback(false); openDndSettings() }
         findViewById<Button>(R.id.refreshStats).setOnClickListener { pulse(it); feedback(false); refreshAll() }
         findViewById<Button>(R.id.dndPermission).setOnClickListener { pulse(it); feedback(false); openDndSettings() }
         findViewById<Button>(R.id.usagePermission).setOnClickListener { pulse(it); feedback(false); openUsageSettings() }
@@ -95,7 +102,9 @@ class MainActivity : Activity() {
         })
     }
 
-    private fun applyGlobalUiPolish() {\n        // Do not keep the booster window awake unconditionally.\n    }
+    private fun applyGlobalUiPolish() {
+        // Do not keep the booster window awake unconditionally.
+    }
 
     private fun updateSessionTimer() {
         if (sessionStartedAt <= 0L) { timerView.text = "SESSION\n00:00:00"; return }
