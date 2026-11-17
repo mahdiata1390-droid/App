@@ -45,6 +45,7 @@ class BoosterService : Service() {
     private var activePlayMs = 0L
     private var lastPollAt = 0L
     private var lastForegroundPackage: String? = null
+    private var lastForegroundEventAt = 0L
     private var usageAccessMissingSince = 0L
     private var profileDnd = true
     private var profileAwake = true
@@ -85,7 +86,7 @@ class BoosterService : Service() {
 
             if (foreground == target) {
                 updateBubble(true)
-            } else if (foreground != null && foreground != packageName &&
+            } else if (foreground != null && foreground != target && foreground != packageName &&
                 now - sessionStartedAt >= 15000L) {
                 stopSelf()
                 return
@@ -145,6 +146,7 @@ class BoosterService : Service() {
                 brightnessChangedByService = false
                 screenTimeoutChangedByService = false
                 lastForegroundPackage = null
+                lastForegroundEventAt = 0L
                 usageAccessMissingSince = 0L
 
                 val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
@@ -292,7 +294,12 @@ class BoosterService : Service() {
             }
         }
 
-        if (latestPkg != null) lastForegroundPackage = latestPkg
+        if (latestTime > 0L) {
+            lastForegroundPackage = latestPkg
+            lastForegroundEventAt = latestTime
+        } else if (lastForegroundEventAt > 0L && end - lastForegroundEventAt > 20_000L) {
+            lastForegroundPackage = null
+        }
         return lastForegroundPackage
     }
 
@@ -505,6 +512,7 @@ class BoosterService : Service() {
         activePlayMs = 0L
         lastPollAt = 0L
         lastForegroundPackage = null
+        lastForegroundEventAt = 0L
         sessionStartBrightness = -1f
         brightnessChangedByService = false
         sessionStartScreenTimeout = -1L
@@ -553,8 +561,13 @@ class BoosterService : Service() {
 
     private fun restoreScreenTimeout() {
         if (screenTimeoutChangedByService && sessionStartScreenTimeout > 0L && Settings.System.canWrite(this)) {
-            runCatching {
-                Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, sessionStartScreenTimeout)
+            val current = runCatching {
+                Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
+            }.getOrNull()
+            if (current == SCREEN_ON_TIMEOUT_MS) {
+                runCatching {
+                    Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, sessionStartScreenTimeout)
+                }
             }
         }
         sessionStartScreenTimeout = -1L
@@ -563,8 +576,14 @@ class BoosterService : Service() {
 
     private fun restoreBrightness() {
         if (brightnessChangedByService && sessionStartBrightness >= 0f && Settings.System.canWrite(this)) {
-            runCatching {
-                Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, sessionStartBrightness.toInt())
+            val current = runCatching {
+                Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+            }.getOrNull()
+            val locked = sessionStartBrightness.toInt().coerceIn(0, 255)
+            if (current == locked) {
+                runCatching {
+                    Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, locked)
+                }
             }
         }
         sessionStartBrightness = -1f
