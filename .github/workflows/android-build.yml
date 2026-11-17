@@ -35,6 +35,12 @@ jobs:
           print(f"Validated {len(files)} XML files.")
           PY
 
+      - name: Run JVM unit tests
+        run: gradle --no-daemon testDebugUnitTest
+
+      - name: Run Android lint
+        run: gradle --no-daemon lintRelease
+
       - name: Build release APK
         run: gradle --no-daemon assembleRelease
 
