@@ -47,6 +47,7 @@ class BoosterService : Service() {
     private var lastForegroundPackage: String? = null
     private var lastForegroundEventAt = 0L
     private var usageAccessMissingSince = 0L
+    private var gameForegroundSeen = false
     private var profileDnd = true
     private var profileAwake = true
     private var profileBrightness = false
@@ -75,8 +76,11 @@ class BoosterService : Service() {
                 usageAccessMissingSince = 0L
             }
             val foreground = foregroundPackage()
-            if (foreground == target && lastPollAt > 0L) {
-                activePlayMs += SessionGuards.capElapsed(now, lastPollAt, POLL_MS * 2L)
+            if (foreground == target) {
+                gameForegroundSeen = true
+                if (lastPollAt > 0L) {
+                    activePlayMs += SessionGuards.capElapsed(now, lastPollAt, POLL_MS * 2L)
+                }
             }
             lastPollAt = now
             updateThermalPeak()
@@ -142,6 +146,7 @@ class BoosterService : Service() {
                 profileAwake = intent?.getBooleanExtra("profile_awake", true) ?: true
                 profileBrightness = intent?.getBooleanExtra("profile_brightness", false) ?: false
                 profileHud = intent?.getBooleanExtra("profile_hud", true) ?: true
+                gameForegroundSeen = false
                 dndChangedByService = false
                 dndChangedByUser = false
                 brightnessChangedByService = false
@@ -195,9 +200,15 @@ class BoosterService : Service() {
                                 Settings.System.SCREEN_OFF_TIMEOUT,
                                 SCREEN_ON_TIMEOUT_MS
                             )
+                            val appliedTimeout = Settings.System.getLong(
+                                contentResolver,
+                                Settings.System.SCREEN_OFF_TIMEOUT,
+                                SCREEN_ON_TIMEOUT_MS
+                            )
                             screenTimeoutChangedByService = true
                             runtimeEditor
                                 .putLong("previous_screen_timeout", sessionStartScreenTimeout)
+                                .putLong("applied_screen_timeout", appliedTimeout)
                                 .putBoolean("screen_timeout_changed", true)
                         }
                     }
@@ -525,8 +536,8 @@ class BoosterService : Service() {
 
     private fun saveSessionHistory() {
         if (sessionStartedAt == 0L || targetPackage == null) return
-        val totalDuration = (System.currentTimeMillis() - sessionStartedAt).coerceAtLeast(0L)
-        val duration = if (activePlayMs > 0L) activePlayMs else totalDuration.coerceAtMost(POLL_MS * 2L)
+        if (!gameForegroundSeen && activePlayMs <= 0L) return
+        val duration = activePlayMs.coerceAtLeast(0L)
         val label = runCatching {
             packageManager.getApplicationLabel(
                 packageManager.getApplicationInfo(targetPackage!!, 0)
@@ -565,7 +576,9 @@ class BoosterService : Service() {
             val current = runCatching {
                 Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
             }.getOrNull()
-            if (SessionGuards.shouldRestoreLong(screenTimeoutChangedByService, sessionStartScreenTimeout, current, SCREEN_ON_TIMEOUT_MS)) {
+            val applied = getSharedPreferences("booster_runtime", MODE_PRIVATE)
+                .getLong("applied_screen_timeout", SCREEN_ON_TIMEOUT_MS)
+            if (SessionGuards.shouldRestoreLong(screenTimeoutChangedByService, sessionStartScreenTimeout, current, applied)) {
                 runCatching {
                     Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, sessionStartScreenTimeout)
                 }
