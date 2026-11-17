@@ -43,6 +43,7 @@ class BoosterService : Service() {
     private var overlayPanel: LinearLayout? = null
     private var sessionPausedAt = 0L
     private var dndChangedByService = false
+    private var brightnessChangedByService = false
 
     private val poller = object : Runnable {
         override fun run() {
@@ -50,6 +51,7 @@ class BoosterService : Service() {
             if (target == null) return
             val foreground = foregroundPackage()
             updateThermalPeak()
+            enforceBrightnessLock()
             if (foreground == target) {
                 updateBubble(true)
                 handler.postDelayed(this, POLL_MS)
@@ -81,9 +83,24 @@ class BoosterService : Service() {
         when (intent?.action) {
             ACTION_STOP -> stopSelf()
             else -> {
-                targetPackage = intent?.getStringExtra(EXTRA_PACKAGE) ?: targetPackage
-                if (sessionStartedAt == 0L) sessionStartedAt = System.currentTimeMillis()
-                if (sessionStartAt == 0L) sessionStartAt = sessionStartedAt
+                val requestedPackage = intent?.getStringExtra(EXTRA_PACKAGE) ?: targetPackage
+                if (sessionStartedAt != 0L && targetPackage == requestedPackage) {
+                    // Ignore duplicate starts for the same active game. Repeated taps must not
+                    // create a second logical session or overwrite restoration state.
+                    return START_NOT_STICKY
+                }
+                if (sessionStartedAt != 0L) {
+                    finishCurrentSessionForReplacement()
+                }
+
+                targetPackage = requestedPackage
+                sessionStartedAt = System.currentTimeMillis()
+                sessionStartAt = sessionStartedAt
+                getSharedPreferences("booster_runtime", MODE_PRIVATE).edit()
+                    .putLong("session_started_at", sessionStartedAt)
+                    .putString("target_package", targetPackage)
+                    .apply()
+
                 profileDnd = intent?.getBooleanExtra("profile_dnd", true) ?: true
                 profileAwake = intent?.getBooleanExtra("profile_awake", true) ?: true
                 profileBrightness = intent?.getBooleanExtra("profile_brightness", false) ?: false
@@ -101,7 +118,12 @@ class BoosterService : Service() {
                 }
                 if (profileBrightness && Settings.System.canWrite(this)) {
                     sessionStartBrightness = Settings.System.getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1f)
-                    runCatching { Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 255) }
+                    if (sessionStartBrightness >= 0f) {
+                        runCatching {
+                            Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 255)
+                            brightnessChangedByService = true
+                        }
+                    }
                 }
                 if (targetPackage != null && Settings.canDrawOverlays(this) && profileHud) showBubble()
                 handler.removeCallbacks(poller)
@@ -113,10 +135,14 @@ class BoosterService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        removeToolbox()
         removeBubble()
         saveSessionHistory()
         restoreDnd()
         restoreBrightness()
+        getSharedPreferences("booster_runtime", MODE_PRIVATE).edit()
+            .clear()
+            .apply()
         super.onDestroy()
     }
 
@@ -258,6 +284,34 @@ class BoosterService : Service() {
         }
     }
 
+    private fun enforceBrightnessLock() {
+        if (!profileBrightness || !brightnessChangedByService || !Settings.System.canWrite(this)) return
+        val current = runCatching {
+            Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+        }.getOrNull() ?: return
+        if (current != 255) {
+            runCatching { Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 255) }
+        }
+    }
+
+    private fun finishCurrentSessionForReplacement() {
+        handler.removeCallbacks(poller)
+        removeToolbox()
+        removeBubble()
+        saveSessionHistory()
+        restoreDnd()
+        restoreBrightness()
+        getSharedPreferences("booster_runtime", MODE_PRIVATE).edit().clear().apply()
+
+        targetPackage = null
+        sessionStartedAt = 0L
+        sessionStartAt = 0L
+        sessionStartBrightness = -1f
+        brightnessChangedByService = false
+        dndChangedByService = false
+        peakThermalStatus = PowerManager.THERMAL_STATUS_NONE
+    }
+
     private fun saveSessionHistory() {
         if (sessionStartedAt == 0L || targetPackage == null) return
         val duration = (System.currentTimeMillis() - sessionStartedAt).coerceAtLeast(0L)
@@ -291,9 +345,13 @@ class BoosterService : Service() {
     private fun thermalLabel(s:Int):String=when(s){PowerManager.THERMAL_STATUS_NONE->"NORMAL";PowerManager.THERMAL_STATUS_LIGHT->"LIGHT";PowerManager.THERMAL_STATUS_MODERATE->"MODERATE";PowerManager.THERMAL_STATUS_SEVERE->"SEVERE";PowerManager.THERMAL_STATUS_CRITICAL->"CRITICAL";PowerManager.THERMAL_STATUS_EMERGENCY->"EMERGENCY";PowerManager.THERMAL_STATUS_SHUTDOWN->"SHUTDOWN";else->"N/A"}
 
     private fun restoreBrightness() {
-        if (sessionStartBrightness >= 0f && Settings.System.canWrite(this)) {
-            runCatching { Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, sessionStartBrightness.toInt()) }
+        if (brightnessChangedByService && sessionStartBrightness >= 0f && Settings.System.canWrite(this)) {
+            runCatching {
+                Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, sessionStartBrightness.toInt())
+            }
         }
+        sessionStartBrightness = -1f
+        brightnessChangedByService = false
     }
 
     private fun restoreDnd() {
