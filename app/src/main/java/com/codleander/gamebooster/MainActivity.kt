@@ -17,6 +17,7 @@ import android.media.AudioManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.view.WindowManager.LayoutParams
+import androidx.tracing.Trace
 import java.util.Locale
 import kotlin.math.roundToInt
 import org.json.JSONArray
@@ -281,6 +282,8 @@ class MainActivity : Activity() {
     }
 
     private fun updateStats() {
+        Trace.beginSection("GameBooster.updateStats")
+        try {
         val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
         val info = ActivityManager.MemoryInfo()
         am.getMemoryInfo(info)
@@ -298,6 +301,9 @@ class MainActivity : Activity() {
         val batteryStatus = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
         val charging = batteryStatus == BatteryManager.BATTERY_STATUS_CHARGING || batteryStatus == BatteryManager.BATTERY_STATUS_FULL
         batteryView.text = if (percent >= 0) "BATTERY\n$percent%${if (charging) " • CHARGING" else ""}" else "BATTERY\nN/A"
+        } finally {
+            Trace.endSection()
+        }
     }
 
     private fun thermalLabel(status: Int): String = when (status) {
@@ -312,6 +318,8 @@ class MainActivity : Activity() {
     }
 
     private fun loadGames() {
+        Trace.beginSection("GameBooster.loadGames")
+        try {
         val pm = packageManager
         val density = resources.displayMetrics.density
         fun dp(value: Int): Int = (value * density).roundToInt()
@@ -386,6 +394,9 @@ class MainActivity : Activity() {
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             lp.bottomMargin = dp(12)
             gamesContainer.addView(row, lp)
+        }
+        } finally {
+            Trace.endSection()
         }
     }
 
