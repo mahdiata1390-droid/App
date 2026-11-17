@@ -174,7 +174,7 @@ class MainActivity : Activity() {
     private fun startGameSession(pkg: String, label: String) {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (hasDndAccess()) {
-            getPreferences(MODE_PRIVATE).edit()
+            getSharedPreferences("booster", MODE_PRIVATE).edit()
                 .putInt("previous_interruption_filter", notificationManager.currentInterruptionFilter)
                 .apply()
             notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
