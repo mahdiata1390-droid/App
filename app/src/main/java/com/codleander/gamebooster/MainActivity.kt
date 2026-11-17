@@ -38,6 +38,7 @@ class MainActivity : Activity() {
     private lateinit var timerView: TextView
     private lateinit var networkView: TextView
     private var sessionStartedAt = 0L
+    private var selectedProfile = Profile()
     private val uiHandler = Handler(Looper.getMainLooper())
     private var tone: ToneGenerator? = null
 
@@ -209,8 +210,16 @@ class MainActivity : Activity() {
             row.setOnClickListener {
                 selectedPackage = ri.activityInfo.packageName
                 selectedLabel = ri.loadLabel(pm).toString()
+                selectedProfile = loadProfile(selectedPackage!!)
                 statusView.text = "SELECTED • ${selectedLabel!!.uppercase(Locale.ROOT)} • READY TO BOOST"
             }
+
+            val profile = Button(this).apply {
+                text = "PROFILE"
+                setTextColor(Color.rgb(89, 216, 255)); background=getDrawable(R.drawable.neo_button); elevation=4f
+                setOnClickListener { openProfileEditor(ri.activityInfo.packageName, ri.loadLabel(pm).toString()) }
+            }
+            row.addView(profile)
 
             val launch = Button(this).apply {
                 text = "BOOST"
@@ -229,9 +238,26 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun loadProfile(pkg: String): Profile {
+        val p = getSharedPreferences("game_profiles", MODE_PRIVATE)
+        return Profile(p.getBoolean("${pkg}_dnd", true), p.getBoolean("${pkg}_awake", true), p.getBoolean("${pkg}_brightness", false), p.getBoolean("${pkg}_hud", true))
+    }
+    private fun saveProfile(pkg: String, profile: Profile) {
+        getSharedPreferences("game_profiles", MODE_PRIVATE).edit().putBoolean("${pkg}_dnd", profile.dnd).putBoolean("${pkg}_awake", profile.keepAwake).putBoolean("${pkg}_brightness", profile.lockBrightness).putBoolean("${pkg}_hud", profile.hud).apply()
+    }
+    private fun openProfileEditor(pkg: String, label: String) {
+        val p = loadProfile(pkg)
+        val items = arrayOf("Gaming DND", "Keep Screen On", "Brightness Lock", "Live HUD")
+        val checked = booleanArrayOf(p.dnd,p.keepAwake,p.lockBrightness,p.hud)
+        AlertDialog.Builder(this).setTitle("GAME PROFILE • $label").setMultiChoiceItems(items, checked) { _, which, value -> checked[which]=value }
+            .setPositiveButton("SAVE") { _, _ -> saveProfile(pkg, Profile(checked[0],checked[1],checked[2],checked[3])); selectedProfile=loadProfile(pkg); statusView.text="PROFILE SAVED • ${label.uppercase(Locale.ROOT)}" }
+            .setNegativeButton("CANCEL", null).show()
+    }
+
     private fun startGameSession(pkg: String, label: String) {
         selectedPackage = pkg
         selectedLabel = label
+        selectedProfile = loadProfile(pkg)
         getSharedPreferences("game_profiles", MODE_PRIVATE).edit()
             .putString("${pkg}_label", label)
             .putInt("${pkg}_launches", getSharedPreferences("game_profiles", MODE_PRIVATE).getInt("${pkg}_launches", 0) + 1)
@@ -248,6 +274,10 @@ class MainActivity : Activity() {
             val serviceIntent = Intent(this, BoosterService::class.java).apply {
                 action = BoosterService.ACTION_START
                 putExtra(BoosterService.EXTRA_PACKAGE, pkg)
+                putExtra("profile_dnd", selectedProfile.dnd)
+                putExtra("profile_awake", selectedProfile.keepAwake)
+                putExtra("profile_brightness", selectedProfile.lockBrightness)
+                putExtra("profile_hud", selectedProfile.hud)
             }
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
             sessionStartedAt = System.currentTimeMillis()
@@ -325,6 +355,8 @@ class MainActivity : Activity() {
             statusView.text = "SYSTEM READY • REAL DEVICE DATA"
         }
     }
+
+    data class Profile(val dnd:Boolean=true,val keepAwake:Boolean=true,val lockBrightness:Boolean=false,val hud:Boolean=true)
 
     private fun updatePermissionStates() {
         dndState.text = if (hasDndAccess()) "GAME MODE • ENABLED" else "GAME MODE • NOT ENABLED"
