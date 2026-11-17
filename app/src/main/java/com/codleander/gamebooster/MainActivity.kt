@@ -37,6 +37,7 @@ class MainActivity : Activity() {
     private lateinit var timerView: TextView
     private lateinit var networkView: TextView
     private lateinit var pingView: TextView
+    private lateinit var notificationState: TextView
     private var sessionStartedAt = 0L
     private var selectedProfile = Profile()
     private val uiHandler = Handler(Looper.getMainLooper())
@@ -59,6 +60,7 @@ class MainActivity : Activity() {
         timerView = findViewById(R.id.sessionTimer)
         networkView = findViewById(R.id.networkStatus)
         pingView = findViewById(R.id.pingStatus)
+        notificationState = findViewById(R.id.notificationPermissionState)
         applyGlobalUiPolish()
         startLiveDashboard()
         tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
@@ -75,6 +77,7 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.dndPermission).setOnClickListener { pulse(it); feedback(false); openDndSettings() }
         findViewById<Button>(R.id.usagePermission).setOnClickListener { pulse(it); feedback(false); openUsageSettings() }
         findViewById<Button>(R.id.overlayPermission).setOnClickListener { pulse(it); feedback(false); openOverlaySettings() }
+        findViewById<Button>(R.id.notificationPermission).setOnClickListener { pulse(it); feedback(false); openNotificationPermission() }
         refreshAll()
     }
 
@@ -290,7 +293,9 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this).setTitle("GAME PROFILE • $label").setMultiChoiceItems(items, checked) { _, which, value -> checked[which]=value }
             .setPositiveButton("SAVE") { _, _ ->
                 val profile=Profile(checked[0],checked[1],checked[2],checked[3]); saveProfile(pkg, profile); selectedProfile=profile
-                if (profile.lockBrightness && !Settings.System.canWrite(this)) startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
+                if ((profile.lockBrightness || profile.keepAwake) && !Settings.System.canWrite(this)) {
+                    startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
+                }
                 statusView.text="PROFILE SAVED • ${label.uppercase(Locale.ROOT)}"
             }
             .setNegativeButton("CANCEL", null).show()
@@ -349,6 +354,26 @@ class MainActivity : Activity() {
 
     private fun openOverlaySettings() {
         startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)))
+    }
+
+    private fun openNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33 && !hasNotificationPermission()) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+        } else {
+            runCatching {
+                startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                })
+            }
+        }
+    }
+
+    private fun hasNotificationPermission(): Boolean =
+        Build.VERSION.SDK_INT < 33 || checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001) updatePermissionStates()
     }
 
     private fun showHistorySummary() {
@@ -411,6 +436,7 @@ class MainActivity : Activity() {
         dndState.text = if (hasDndAccess()) "GAME MODE • ENABLED" else "GAME MODE • NOT ENABLED"
         usageState.text = if (hasUsageAccess()) "GAME DETECTION • ENABLED" else "GAME DETECTION • NOT ENABLED"
         overlayState.text = if (Settings.canDrawOverlays(this)) "FLOATING BOOSTER • ENABLED" else "FLOATING BOOSTER • NOT ENABLED"
+        notificationState.text = if (hasNotificationPermission()) "NOTIFICATIONS • ENABLED" else "NOTIFICATIONS • NOT ENABLED"
     }
 
     private fun hasDndAccess(): Boolean {
