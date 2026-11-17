@@ -402,7 +402,7 @@ class MainActivity : Activity() {
             "${it.key}: ${formatPlayTime(it.value)}"
         }
         historyHint.text = "TODAY  $today\nTHIS MONTH  $month\n" + if (top.isBlank()) "No sessions this month yet." else "TOP: $top"
-        findViewById<HistoryChartView>(R.id.historyChart).setData(byGame.values.toList())
+        findViewById<HistoryChartView>(R.id.historyChart).setData(byGame.values.sortedDescending().take(8))
     }
 
     private fun formatPlayTime(ms: Long): String {
