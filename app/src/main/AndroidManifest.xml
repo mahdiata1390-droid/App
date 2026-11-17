@@ -14,6 +14,7 @@
 
     <application
         android:theme="@style/Theme.GameBooster"
+        android:icon="@drawable/ic_game_booster"
         android:label="Game Booster"
         android:icon="@drawable/ic_game_booster"
         android:roundIcon="@drawable/ic_game_booster"
