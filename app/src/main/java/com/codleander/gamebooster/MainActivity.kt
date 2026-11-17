@@ -291,15 +291,30 @@ class MainActivity : Activity() {
     }
 
     private fun feedback(strong: Boolean) {
-        val soundId = if (strong) boostSound else tapSound
-        if (soundId != 0) sounds?.play(soundId, 0.8f, 0.8f, 1, 0, 1f)
+        playSound(if (strong) boostSound else tapSound, if (strong) 1.0f else 1.08f, 0.82f)
         tone?.startTone(if (strong) ToneGenerator.TONE_PROP_BEEP2 else ToneGenerator.TONE_PROP_BEEP, 90)
+        vibrate(if (strong) 35L else 20L)
+    }
+
+    private fun playSound(soundId: Int, rate: Float = 1f, volume: Float = 0.82f) {
+        if (soundId != 0) sounds?.play(soundId, volume, volume, 1, 0, rate)
+    }
+
+    private fun vibrate(duration: Long) {
         val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
-        if (vibrator.hasVibrator()) {
-            val duration = if (strong) 35L else 20L
-            if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
-            else { @Suppress("DEPRECATION") vibrator.vibrate(duration) }
-        }
+        if (!vibrator.hasVibrator()) return
+        if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
+        else { @Suppress("DEPRECATION") vibrator.vibrate(duration) }
+    }
+
+    private fun successFeedback() {
+        playSound(successSound, 1.12f, 0.9f)
+        vibrate(45L)
+    }
+
+    private fun errorFeedback() {
+        playSound(errorSound, 0.82f, 0.72f)
+        vibrate(70L)
     }
 
     private fun pulse(view: View) {
@@ -391,9 +406,15 @@ class MainActivity : Activity() {
             nameBox.addView(name); nameBox.addView(type)
 
             row.setOnClickListener {
+                for (i in 0 until gamesContainer.childCount) {
+                    gamesContainer.getChildAt(i).background = getDrawable(R.drawable.neo_card)
+                }
+                row.background = getDrawable(R.drawable.neo_selected)
                 selectedPackage = ri.activityInfo.packageName
                 selectedLabel = ri.loadLabel(pm).toString()
                 selectedProfile = loadProfile(selectedPackage!!)
+                pulse(row)
+                playSound(tapSound, 1.12f, 0.7f)
                 statusView.text = "SELECTED • ${selectedLabel!!.uppercase(Locale.ROOT)} • READY TO BOOST"
             }
 
@@ -454,6 +475,8 @@ class MainActivity : Activity() {
 
         val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
         if (launchIntent == null) {
+            errorFeedback()
+            pulse(boostView)
             statusView.text = "GAME COULD NOT BE LAUNCHED • $label"
             return
         }
@@ -487,10 +510,15 @@ class MainActivity : Activity() {
                 }
                 sessionStartedAt = if (alreadyActive) activeStart else System.currentTimeMillis()
                 sessionRequested = true
+                successFeedback()
+                pulse(boostView)
+                pulse(lightningIcon)
                 statusView.text = "BOOST STARTING • " + label.uppercase(Locale.ROOT)
             } catch (e: SecurityException) {
+                errorFeedback()
                 statusView.text = "GAME LAUNCHING • BOOST SERVICE PERMISSION BLOCKED"
             } catch (e: RuntimeException) {
+                errorFeedback()
                 statusView.text = "GAME LAUNCHING • BOOST SERVICE COULD NOT START"
             }
         } else {
@@ -503,6 +531,7 @@ class MainActivity : Activity() {
         runCatching {
             startActivity(launchIntent)
         }.onFailure {
+            errorFeedback()
             statusView.text = "GAME COULD NOT BE LAUNCHED • $label"
         }
     }
