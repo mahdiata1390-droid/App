@@ -89,7 +89,7 @@ class BoosterService : Service() {
                     sessionStartBrightness = Settings.System.getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1f)
                     runCatching { Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 255) }
                 }
-                if (targetPackage != null && Settings.canDrawOverlays(this)) showBubble()
+                if (targetPackage != null && Settings.canDrawOverlays(this) && profileHud) showBubble()
                 handler.removeCallbacks(poller)
                 handler.post(poller)
             }
@@ -273,7 +273,10 @@ class BoosterService : Service() {
         bubble = null
     }
 
-    private fun formatDuration(ms:Long):String { val s=ms/1000; return String.format(Locale.US,"%02d:%02d:%02d",s/3600,(s%3600)/60,s%60) }\n    private fun thermalLabel(s:Int):String=when(s){PowerManager.THERMAL_STATUS_NONE->"NORMAL";PowerManager.THERMAL_STATUS_LIGHT->"LIGHT";PowerManager.THERMAL_STATUS_MODERATE->"MODERATE";PowerManager.THERMAL_STATUS_SEVERE->"SEVERE";PowerManager.THERMAL_STATUS_CRITICAL->"CRITICAL";PowerManager.THERMAL_STATUS_EMERGENCY->"EMERGENCY";PowerManager.THERMAL_STATUS_SHUTDOWN->"SHUTDOWN";else->"N/A"}\n\n    private fun restoreBrightness() {
+    private fun formatDuration(ms:Long):String { val s=ms/1000; return String.format(Locale.US,"%02d:%02d:%02d",s/3600,(s%3600)/60,s%60) }
+    private fun thermalLabel(s:Int):String=when(s){PowerManager.THERMAL_STATUS_NONE->"NORMAL";PowerManager.THERMAL_STATUS_LIGHT->"LIGHT";PowerManager.THERMAL_STATUS_MODERATE->"MODERATE";PowerManager.THERMAL_STATUS_SEVERE->"SEVERE";PowerManager.THERMAL_STATUS_CRITICAL->"CRITICAL";PowerManager.THERMAL_STATUS_EMERGENCY->"EMERGENCY";PowerManager.THERMAL_STATUS_SHUTDOWN->"SHUTDOWN";else->"N/A"}
+
+    private fun restoreBrightness() {
         if (sessionStartBrightness >= 0f && Settings.System.canWrite(this)) {
             runCatching { Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, sessionStartBrightness.toInt()) }
         }
