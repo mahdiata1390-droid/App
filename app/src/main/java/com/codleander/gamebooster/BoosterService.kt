@@ -76,7 +76,7 @@ class BoosterService : Service() {
             }
             val foreground = foregroundPackage()
             if (foreground == target && lastPollAt > 0L) {
-                activePlayMs += (now - lastPollAt).coerceIn(0L, POLL_MS * 2L)
+                activePlayMs += SessionGuards.capElapsed(now, lastPollAt, POLL_MS * 2L)
             }
             lastPollAt = now
             updateThermalPeak()
@@ -86,8 +86,9 @@ class BoosterService : Service() {
 
             if (foreground == target) {
                 updateBubble(true)
-            } else if (foreground != null && foreground != target && foreground != packageName &&
-                now - sessionStartedAt >= 15000L) {
+            } else if (SessionGuards.shouldStopForWrongForeground(
+                    foreground, target, packageName, now - sessionStartedAt, FOREGROUND_MISSING_GRACE_MS
+                )) {
                 stopSelf()
                 return
             }
@@ -564,7 +565,7 @@ class BoosterService : Service() {
             val current = runCatching {
                 Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
             }.getOrNull()
-            if (current == SCREEN_ON_TIMEOUT_MS) {
+            if (SessionGuards.shouldRestoreLong(screenTimeoutChangedByService, sessionStartScreenTimeout, current, SCREEN_ON_TIMEOUT_MS)) {
                 runCatching {
                     Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, sessionStartScreenTimeout)
                 }
@@ -580,7 +581,7 @@ class BoosterService : Service() {
                 Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
             }.getOrNull()
             val locked = sessionStartBrightness.toInt().coerceIn(0, 255)
-            if (current == locked) {
+            if (SessionGuards.shouldRestoreInt(brightnessChangedByService, sessionStartBrightness.toInt().coerceIn(0, 255), current, locked)) {
                 runCatching {
                     Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, locked)
                 }
