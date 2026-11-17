@@ -115,6 +115,7 @@ class BoosterService : Service() {
                 sessionStartAt = sessionStartedAt
                 activePlayMs = 0L
                 lastPollAt = sessionStartedAt
+                profileDnd = intent?.getBooleanExtra("profile_dnd", true) ?: true
                 profileAwake = intent?.getBooleanExtra("profile_awake", true) ?: true
                 profileBrightness = intent?.getBooleanExtra("profile_brightness", false) ?: false
                 profileHud = intent?.getBooleanExtra("profile_hud", true) ?: true
