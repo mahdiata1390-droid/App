@@ -14,6 +14,7 @@ import android.view.animation.AnimationUtils
 import android.widget.*
 import android.media.ToneGenerator
 import android.media.AudioManager
+import android.media.SoundPool
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.view.WindowManager.LayoutParams
@@ -45,6 +46,11 @@ class MainActivity : Activity() {
     private var selectedProfile = Profile()
     private val uiHandler = Handler(Looper.getMainLooper())
     private var tone: ToneGenerator? = null
+    private var sounds: SoundPool? = null
+    private var boostSound = 0
+    private var tapSound = 0
+    private var successSound = 0
+    private var errorSound = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,6 +75,12 @@ class MainActivity : Activity() {
         recoverStaleRuntimeIfNeeded()
         startLiveDashboard()
         tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
+        sounds = SoundPool.Builder().setMaxStreams(3).build().also {
+            boostSound = it.load(this, R.raw.sfx_boost, 1)
+            tapSound = it.load(this, R.raw.sfx_tap, 1)
+            successSound = it.load(this, R.raw.sfx_success, 1)
+            errorSound = it.load(this, R.raw.sfx_error, 1)
+        }
 
         boostView.setOnClickListener {
             pulse(boostView); pulse(lightningIcon); feedback(true)
@@ -99,6 +111,8 @@ class MainActivity : Activity() {
         uiHandler.removeCallbacksAndMessages(null)
         tone?.release()
         tone = null
+        sounds?.release()
+        sounds = null
         super.onDestroy()
     }
 
@@ -272,6 +286,8 @@ class MainActivity : Activity() {
     }
 
     private fun feedback(strong: Boolean) {
+        val soundId = if (strong) boostSound else tapSound
+        if (soundId != 0) sounds?.play(soundId, 0.8f, 0.8f, 1, 0, 1f)
         tone?.startTone(if (strong) ToneGenerator.TONE_PROP_BEEP2 else ToneGenerator.TONE_PROP_BEEP, 90)
         val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
         if (vibrator.hasVibrator()) {
