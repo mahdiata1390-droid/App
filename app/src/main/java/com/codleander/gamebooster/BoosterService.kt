@@ -4,6 +4,7 @@ import android.app.*
 import android.app.usage.UsageStatsManager
 import android.content.*
 import android.graphics.Color
+import android.graphics.drawable.Icon
 import android.graphics.PixelFormat
 import android.os.*
 import android.provider.Settings
