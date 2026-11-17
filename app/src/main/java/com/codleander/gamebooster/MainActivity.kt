@@ -150,7 +150,10 @@ class MainActivity : Activity() {
             Settings.System.canWrite(this)
         ) {
             val previous = runtime.getLong("previous_screen_timeout", -1L)
-            if (previous > 0L) {
+            val current = runCatching {
+                Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
+            }.getOrNull()
+            if (previous > 0L && current == 30L * 60L * 1000L) {
                 runCatching {
                     Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, previous)
                 }
@@ -161,7 +164,10 @@ class MainActivity : Activity() {
             Settings.System.canWrite(this)
         ) {
             val previous = runtime.getInt("previous_brightness", -1)
-            if (previous >= 0) {
+            val current = runCatching {
+                Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+            }.getOrNull()
+            if (previous >= 0 && current == previous) {
                 runCatching {
                     Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, previous)
                 }
