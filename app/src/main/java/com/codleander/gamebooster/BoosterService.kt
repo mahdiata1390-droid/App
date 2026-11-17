@@ -2,6 +2,7 @@ package com.codleander.gamebooster
 
 import android.app.*
 import android.app.usage.UsageStatsManager
+import android.app.AppOpsManager
 import android.content.*
 import android.content.pm.ServiceInfo
 import android.graphics.Color
@@ -27,6 +28,8 @@ class BoosterService : Service() {
         private const val CHANNEL_ID = "booster_session"
         private const val NOTIFICATION_ID = 1001
         private const val POLL_MS = 2000L
+        private const val SESSION_MAX_MS = 24L * 60L * 60L * 1000L
+        private const val FOREGROUND_MISSING_GRACE_MS = 15_000L
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -42,6 +45,7 @@ class BoosterService : Service() {
     private var activePlayMs = 0L
     private var lastPollAt = 0L
     private var lastForegroundPackage: String? = null
+    private var usageAccessMissingSince = 0L
     private var profileDnd = true
     private var profileAwake = true
     private var profileBrightness = false
@@ -56,6 +60,19 @@ class BoosterService : Service() {
         override fun run() {
             val target = targetPackage ?: return
             val now = System.currentTimeMillis()
+            if (System.currentTimeMillis() - sessionStartedAt >= SESSION_MAX_MS) {
+                stopSelf()
+                return
+            }
+            if (!hasUsageAccess()) {
+                if (usageAccessMissingSince == 0L) usageAccessMissingSince = now
+                if (now - usageAccessMissingSince >= FOREGROUND_MISSING_GRACE_MS) {
+                    stopSelf()
+                    return
+                }
+            } else {
+                usageAccessMissingSince = 0L
+            }
             val foreground = foregroundPackage()
             if (foreground == target && lastPollAt > 0L) {
                 activePlayMs += (now - lastPollAt).coerceIn(0L, POLL_MS * 2L)
@@ -110,6 +127,10 @@ class BoosterService : Service() {
                     finishCurrentSessionForReplacement()
                 }
 
+                if (!isLaunchablePackage(requestedPackage)) {
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
                 targetPackage = requestedPackage
                 sessionStartedAt = System.currentTimeMillis()
                 sessionStartAt = sessionStartedAt
@@ -124,6 +145,7 @@ class BoosterService : Service() {
                 brightnessChangedByService = false
                 screenTimeoutChangedByService = false
                 lastForegroundPackage = null
+                usageAccessMissingSince = 0L
 
                 val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
                 val runtimeEditor = runtime.edit()
@@ -201,7 +223,9 @@ class BoosterService : Service() {
                 }
 
                 runtimeEditor.apply()
-                if (targetPackage != null && Settings.canDrawOverlays(this) && profileHud) showBubble()
+                if (targetPackage != null && Settings.canDrawOverlays(this) && profileHud) {
+                    runCatching { showBubble() }
+                }
                 handler.removeCallbacks(poller)
                 handler.post(poller)
             }
@@ -225,6 +249,28 @@ class BoosterService : Service() {
     }
 
     override fun onBind(intent: Intent?) = null
+
+    private fun hasUsageAccess(): Boolean {
+        val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= 29) {
+            appOps.unsafeCheckOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(),
+                packageName
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(),
+                packageName
+            )
+        }
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
+
+    private fun isLaunchablePackage(pkg: String): Boolean =
+        runCatching { packageManager.getLaunchIntentForPackage(pkg) != null }.getOrDefault(false)
 
     private fun foregroundPackage(): String? {
         val usm = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
@@ -324,7 +370,13 @@ class BoosterService : Service() {
         })
 
         bubble = tv
-        windowManager?.addView(tv, params)
+        try {
+            windowManager?.addView(tv, params)
+        } catch (_: SecurityException) {
+            bubble = null
+        } catch (_: WindowManager.BadTokenException) {
+            bubble = null
+        }
     }
 
     private fun openToolbox() {
@@ -345,7 +397,16 @@ class BoosterService : Service() {
         panel.addView(title); panel.addView(timer); panel.addView(dnd); panel.addView(stop); panel.addView(close)
         val density=resources.displayMetrics.density
         val lp=WindowManager.LayoutParams((230*density).toInt(), WindowManager.LayoutParams.WRAP_CONTENT, if(Build.VERSION.SDK_INT>=26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT).apply { gravity=Gravity.TOP or Gravity.END; x=(14*density).toInt(); y=(250*density).toInt() }
-        overlayPanel=panel; wm.addView(panel,lp)
+        overlayPanel=panel
+        try {
+            wm.addView(panel,lp)
+        } catch (_: SecurityException) {
+            overlayPanel = null
+            return
+        } catch (_: WindowManager.BadTokenException) {
+            overlayPanel = null
+            return
+        }
         handler.post(object:Runnable{override fun run(){ if(overlayPanel!=null){ val sec=(System.currentTimeMillis()-sessionStartedAt)/1000; timer.text=String.format(Locale.US,"SESSION  %02d:%02d:%02d",sec/3600,(sec%3600)/60,sec%60); handler.postDelayed(this,1000)}}})
     }
 
@@ -450,6 +511,7 @@ class BoosterService : Service() {
         screenTimeoutChangedByService = false
         dndChangedByService = false
         peakThermalStatus = PowerManager.THERMAL_STATUS_NONE
+        usageAccessMissingSince = 0L
     }
 
     private fun saveSessionHistory() {
