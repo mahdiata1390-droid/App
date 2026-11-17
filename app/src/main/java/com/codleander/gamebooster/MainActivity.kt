@@ -37,6 +37,7 @@ class MainActivity : Activity() {
     private lateinit var historyHint: TextView
     private lateinit var timerView: TextView
     private lateinit var networkView: TextView
+    private lateinit var pingView: TextView
     private var sessionStartedAt = 0L
     private var selectedProfile = Profile()
     private val uiHandler = Handler(Looper.getMainLooper())
@@ -58,6 +59,7 @@ class MainActivity : Activity() {
         historyHint = findViewById(R.id.historyHint)
         timerView = findViewById(R.id.sessionTimer)
         networkView = findViewById(R.id.networkStatus)
+        pingView = findViewById(R.id.pingStatus)
         applyGlobalUiPolish()
         startLiveDashboard()
         tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
@@ -91,6 +93,7 @@ class MainActivity : Activity() {
             override fun run() {
                 updateStats()
                 updateNetwork()
+                updatePing()
                 updateSessionTimer()
                 uiHandler.postDelayed(this, 1000L)
             }
@@ -105,6 +108,15 @@ class MainActivity : Activity() {
         if (sessionStartedAt <= 0L) { timerView.text = "SESSION\n00:00:00"; return }
         val total = ((System.currentTimeMillis() - sessionStartedAt) / 1000L).coerceAtLeast(0L)
         timerView.text = String.format(Locale.US, "SESSION\n%02d:%02d:%02d", total/3600, (total%3600)/60, total%60)
+    }
+
+    private fun updatePing() {
+        Thread {
+            val start = System.nanoTime()
+            val ok = runCatching { java.net.InetAddress.getByName("1.1.1.1").isReachable(1200) }.getOrDefault(false)
+            val ms = (System.nanoTime() - start) / 1_000_000L
+            runOnUiThread { pingView.text = if (ok) "PING\n${ms} ms" else "PING\nTIMEOUT" }
+        }.start()
     }
 
     private fun updateNetwork() {
@@ -250,7 +262,11 @@ class MainActivity : Activity() {
         val items = arrayOf("Gaming DND", "Keep Screen On", "Brightness Lock", "Live HUD")
         val checked = booleanArrayOf(p.dnd,p.keepAwake,p.lockBrightness,p.hud)
         AlertDialog.Builder(this).setTitle("GAME PROFILE • $label").setMultiChoiceItems(items, checked) { _, which, value -> checked[which]=value }
-            .setPositiveButton("SAVE") { _, _ -> saveProfile(pkg, Profile(checked[0],checked[1],checked[2],checked[3])); selectedProfile=loadProfile(pkg); statusView.text="PROFILE SAVED • ${label.uppercase(Locale.ROOT)}" }
+            .setPositiveButton("SAVE") { _, _ ->
+                val profile=Profile(checked[0],checked[1],checked[2],checked[3]); saveProfile(pkg, profile); selectedProfile=profile
+                if (profile.lockBrightness && !Settings.System.canWrite(this)) startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
+                statusView.text="PROFILE SAVED • ${label.uppercase(Locale.ROOT)}"
+            }
             .setNegativeButton("CANCEL", null).show()
     }
 
@@ -330,7 +346,8 @@ class MainActivity : Activity() {
         val top = byGame.entries.sortedByDescending { it.value }.take(3).joinToString("  •  ") {
             "${it.key}: ${formatPlayTime(it.value)}"
         }
-        historyHint.text = "TODAY  $today\nTHIS MONTH  $month\n" + if (top.isBlank()) "No sessions this month yet." else top
+        historyHint.text = "TODAY  $today\nTHIS MONTH  $month\n" + if (top.isBlank()) "No sessions this month yet." else "TOP: $top"
+        findViewById<HistoryChartView?>(R.id.historyChart)?.setData(byGame.values.toList())
     }
 
     private fun formatPlayTime(ms: Long): String {
