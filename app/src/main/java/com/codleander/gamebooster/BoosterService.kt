@@ -20,6 +20,7 @@ import org.json.JSONObject
 
 class BoosterService : Service() {
     companion object {
+        private const val SCREEN_ON_TIMEOUT_MS = 30 * 60 * 1000L
         const val EXTRA_PACKAGE = "target_package"
         const val ACTION_START = "com.codleander.gamebooster.START"
         const val ACTION_STOP = "com.codleander.gamebooster.STOP"
@@ -35,6 +36,8 @@ class BoosterService : Service() {
     private var sessionStartedAt = 0L
     private var peakThermalStatus = PowerManager.THERMAL_STATUS_NONE
     private var sessionStartBrightness = -1f
+    private var sessionStartScreenTimeout = -1L
+    private var screenTimeoutChangedByService = false
     private var sessionStartAt = 0L
     private var profileDnd = true
     private var profileAwake = true
@@ -51,6 +54,7 @@ class BoosterService : Service() {
             if (target == null) return
             val foreground = foregroundPackage()
             updateThermalPeak()
+            enforceScreenTimeout()
             enforceBrightnessLock()
             if (foreground == target) {
                 updateBubble(true)
@@ -84,6 +88,10 @@ class BoosterService : Service() {
             ACTION_STOP -> stopSelf()
             else -> {
                 val requestedPackage = intent?.getStringExtra(EXTRA_PACKAGE) ?: targetPackage
+                if (requestedPackage.isNullOrBlank()) {
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
                 if (sessionStartedAt != 0L && targetPackage == requestedPackage) {
                     // Ignore duplicate starts for the same active game. Repeated taps must not
                     // create a second logical session or overwrite restoration state.
@@ -116,6 +124,15 @@ class BoosterService : Service() {
                         dndChangedByService = true
                     }
                 }
+                if (profileAwake && Settings.System.canWrite(this)) {
+                    sessionStartScreenTimeout = Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, -1L)
+                    if (sessionStartScreenTimeout > 0L && sessionStartScreenTimeout < SCREEN_ON_TIMEOUT_MS) {
+                        runCatching {
+                            Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, SCREEN_ON_TIMEOUT_MS)
+                            screenTimeoutChangedByService = true
+                        }
+                    }
+                }
                 if (profileBrightness && Settings.System.canWrite(this)) {
                     sessionStartBrightness = Settings.System.getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1f)
                     if (sessionStartBrightness >= 0f) {
@@ -139,6 +156,7 @@ class BoosterService : Service() {
         removeBubble()
         saveSessionHistory()
         restoreDnd()
+        restoreScreenTimeout()
         restoreBrightness()
         getSharedPreferences("booster_runtime", MODE_PRIVATE).edit()
             .clear()
@@ -266,7 +284,20 @@ class BoosterService : Service() {
         handler.post(object:Runnable{override fun run(){ if(overlayPanel!=null){ val sec=(System.currentTimeMillis()-sessionStartedAt)/1000; timer.text=String.format(Locale.US,"SESSION  %02d:%02d:%02d",sec/3600,(sec%3600)/60,sec%60); handler.postDelayed(this,1000)}}})
     }
 
-    private fun toggleDnd() { val nm=getSystemService(NOTIFICATION_SERVICE) as NotificationManager; if(nm.isNotificationPolicyAccessGranted) { val current=nm.currentInterruptionFilter; nm.setInterruptionFilter(if(current==NotificationManager.INTERRUPTION_FILTER_NONE) NotificationManager.INTERRUPTION_FILTER_PRIORITY else NotificationManager.INTERRUPTION_FILTER_NONE) } }
+    private fun toggleDnd() {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        if (!nm.isNotificationPolicyAccessGranted) return
+        val current = nm.currentInterruptionFilter
+        runCatching {
+            nm.setInterruptionFilter(
+                if (current == NotificationManager.INTERRUPTION_FILTER_PRIORITY) {
+                    NotificationManager.INTERRUPTION_FILTER_ALL
+                } else {
+                    NotificationManager.INTERRUPTION_FILTER_PRIORITY
+                }
+            )
+        }
+    }
     private fun removeToolbox() { overlayPanel?.let { runCatching { windowManager?.removeView(it) } }; overlayPanel=null }
 
     private fun openToolboxLegacy() {
@@ -284,6 +315,16 @@ class BoosterService : Service() {
         if (Build.VERSION.SDK_INT >= 29) {
             val status = (getSystemService(POWER_SERVICE) as PowerManager).currentThermalStatus
             if (status > peakThermalStatus) peakThermalStatus = status
+        }
+    }
+
+    private fun enforceScreenTimeout() {
+        if (!profileAwake || !screenTimeoutChangedByService || !Settings.System.canWrite(this)) return
+        val current = runCatching {
+            Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
+        }.getOrNull() ?: return
+        if (current < SCREEN_ON_TIMEOUT_MS) {
+            runCatching { Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, SCREEN_ON_TIMEOUT_MS) }
         }
     }
 
@@ -311,6 +352,8 @@ class BoosterService : Service() {
         sessionStartAt = 0L
         sessionStartBrightness = -1f
         brightnessChangedByService = false
+        sessionStartScreenTimeout = -1L
+        screenTimeoutChangedByService = false
         dndChangedByService = false
         peakThermalStatus = PowerManager.THERMAL_STATUS_NONE
     }
@@ -350,6 +393,16 @@ class BoosterService : Service() {
 
     private fun formatDuration(ms:Long):String { val s=ms/1000; return String.format(Locale.US,"%02d:%02d:%02d",s/3600,(s%3600)/60,s%60) }
     private fun thermalLabel(s:Int):String=when(s){PowerManager.THERMAL_STATUS_NONE->"NORMAL";PowerManager.THERMAL_STATUS_LIGHT->"LIGHT";PowerManager.THERMAL_STATUS_MODERATE->"MODERATE";PowerManager.THERMAL_STATUS_SEVERE->"SEVERE";PowerManager.THERMAL_STATUS_CRITICAL->"CRITICAL";PowerManager.THERMAL_STATUS_EMERGENCY->"EMERGENCY";PowerManager.THERMAL_STATUS_SHUTDOWN->"SHUTDOWN";else->"N/A"}
+
+    private fun restoreScreenTimeout() {
+        if (screenTimeoutChangedByService && sessionStartScreenTimeout > 0L && Settings.System.canWrite(this)) {
+            runCatching {
+                Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, sessionStartScreenTimeout)
+            }
+        }
+        sessionStartScreenTimeout = -1L
+        screenTimeoutChangedByService = false
+    }
 
     private fun restoreBrightness() {
         if (brightnessChangedByService && sessionStartBrightness >= 0f && Settings.System.canWrite(this)) {
