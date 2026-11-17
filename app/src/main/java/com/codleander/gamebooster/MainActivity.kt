@@ -279,7 +279,7 @@ class MainActivity : Activity() {
             .putInt("${pkg}_launches", getSharedPreferences("game_profiles", MODE_PRIVATE).getInt("${pkg}_launches", 0) + 1)
             .apply()
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (hasDndAccess()) {
+        if (selectedProfile.dnd && hasDndAccess()) {
             getSharedPreferences("booster", MODE_PRIVATE).edit()
                 .putInt("previous_interruption_filter", notificationManager.currentInterruptionFilter)
                 .apply()
