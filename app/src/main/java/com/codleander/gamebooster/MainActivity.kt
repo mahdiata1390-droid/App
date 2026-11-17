@@ -493,10 +493,10 @@ class MainActivity : Activity() {
             "${it.key}: ${formatPlayTime(it.value)}"
         }
         historyHint.text = "TODAY  $today\nTHIS MONTH  $month\n" + if (top.isBlank()) "No sessions this month yet." else "TOP: $top"
-        val chartData = byGame.entries
+        val chartData: List<Pair<String, Long>> = byGame.entries
             .sortedByDescending { it.value }
             .take(8)
-            .map { it.key to it.value }
+            .map { entry -> Pair(entry.key, entry.value) }
         findViewById<HistoryChartView>(R.id.historyChart).setData(chartData)
     }
 
