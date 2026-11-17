@@ -85,7 +85,10 @@ class BoosterService : Service() {
                 profileAwake = intent?.getBooleanExtra("profile_awake", true) ?: true
                 profileBrightness = intent?.getBooleanExtra("profile_brightness", false) ?: false
                 profileHud = intent?.getBooleanExtra("profile_hud", true) ?: true
-                if (profileBrightness && Settings.System.canWrite(this)) sessionStartBrightness = Settings.System.getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1f)
+                if (profileBrightness && Settings.System.canWrite(this)) {
+                    sessionStartBrightness = Settings.System.getFloat(contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1f)
+                    runCatching { Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 255) }
+                }
                 if (targetPackage != null && Settings.canDrawOverlays(this)) showBubble()
                 handler.removeCallbacks(poller)
                 handler.post(poller)
@@ -220,7 +223,7 @@ class BoosterService : Service() {
         handler.post(object:Runnable{override fun run(){ if(overlayPanel!=null){ val sec=(System.currentTimeMillis()-sessionStartedAt)/1000; timer.text=String.format(Locale.US,"SESSION  %02d:%02d:%02d",sec/3600,(sec%3600)/60,sec%60); handler.postDelayed(this,1000)}}})
     }
 
-    private fun toggleDnd() { if(!profileDnd) return; val nm=getSystemService(NOTIFICATION_SERVICE) as NotificationManager; if(nm.isNotificationPolicyAccessGranted) nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE) }
+    private fun toggleDnd() { val nm=getSystemService(NOTIFICATION_SERVICE) as NotificationManager; if(nm.isNotificationPolicyAccessGranted) { val current=nm.currentInterruptionFilter; nm.setInterruptionFilter(if(current==NotificationManager.INTERRUPTION_FILTER_NONE) NotificationManager.INTERRUPTION_FILTER_PRIORITY else NotificationManager.INTERRUPTION_FILTER_NONE) } }
     private fun removeToolbox() { overlayPanel?.let { runCatching { windowManager?.removeView(it) } }; overlayPanel=null }
 
     private fun openToolboxLegacy() {
@@ -270,7 +273,7 @@ class BoosterService : Service() {
         bubble = null
     }
 
-    private fun restoreBrightness() {
+    private fun formatDuration(ms:Long):String { val s=ms/1000; return String.format(Locale.US,"%02d:%02d:%02d",s/3600,(s%3600)/60,s%60) }\n    private fun thermalLabel(s:Int):String=when(s){PowerManager.THERMAL_STATUS_NONE->"NORMAL";PowerManager.THERMAL_STATUS_LIGHT->"LIGHT";PowerManager.THERMAL_STATUS_MODERATE->"MODERATE";PowerManager.THERMAL_STATUS_SEVERE->"SEVERE";PowerManager.THERMAL_STATUS_CRITICAL->"CRITICAL";PowerManager.THERMAL_STATUS_EMERGENCY->"EMERGENCY";PowerManager.THERMAL_STATUS_SHUTDOWN->"SHUTDOWN";else->"N/A"}\n\n    private fun restoreBrightness() {
         if (sessionStartBrightness >= 0f && Settings.System.canWrite(this)) {
             runCatching { Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, sessionStartBrightness.toInt()) }
         }
