@@ -120,8 +120,10 @@ class MainActivity : Activity() {
             val start = System.nanoTime()
             val ok = runCatching { java.net.InetAddress.getByName("1.1.1.1").isReachable(1200) }.getOrDefault(false)
             val ms = (System.nanoTime() - start) / 1_000_000L
-            runOnUiThread { pingView.text = if (ok) "PING\n${ms} ms" else "PING\nTIMEOUT" }
-        }.start()
+            runOnUiThread {
+                pingView.text = if (ok) "PING\n${ms} ms" else "PING\nTIMEOUT"
+            }
+        }.also { it.start() }
     }
 
     private fun updateNetwork() {
