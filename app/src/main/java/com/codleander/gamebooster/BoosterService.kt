@@ -238,6 +238,9 @@ class BoosterService : Service() {
                             return true
                         }
                     }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        return moved
+                    }
                 }
                 return false
             }
@@ -315,7 +318,11 @@ class BoosterService : Service() {
     private fun saveSessionHistory() {
         if (sessionStartedAt == 0L || targetPackage == null) return
         val duration = (System.currentTimeMillis() - sessionStartedAt).coerceAtLeast(0L)
-        val label = packageManager.getApplicationLabel(packageManager.getApplicationInfo(targetPackage!!, 0)).toString()
+        val label = runCatching {
+            packageManager.getApplicationLabel(
+                packageManager.getApplicationInfo(targetPackage!!, 0)
+            ).toString()
+        }.getOrElse { targetPackage ?: "Unknown Game" }
         val prefs = getSharedPreferences("booster_history", MODE_PRIVATE)
         val sessions = runCatching { JSONArray(prefs.getString("sessions", "[]")) }.getOrDefault(JSONArray())
         sessions.put(JSONObject().apply {
