@@ -23,6 +23,18 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      - name: Validate Android XML resources
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+          files = list(pathlib.Path("app/src/main").rglob("*.xml"))
+          for path in files:
+              ET.parse(path)
+              print(f"OK XML: {path}")
+          print(f"Validated {len(files)} XML files.")
+          PY
+
       - name: Build release APK
         run: gradle --no-daemon assembleRelease
 
