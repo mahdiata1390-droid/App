@@ -63,11 +63,7 @@ class MainActivity : Activity() {
         startLiveDashboard()
         tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
 
-        boostView.setOnClickListener {
-            pulse(boostView); pulse(lightningIcon); feedback(true)
-            statusView.text = if (selectedLabel != null) "READY • ${selectedLabel!!.uppercase(Locale.ROOT)}" else "SELECT A GAME BELOW TO START A BOOST SESSION"
-        }
-        findViewById<Button>(R.id.dnd).setOnClickListener { pulse(it); feedback(false); openDndSettings() }
+        boostView.setOnClickListener {\n            pulse(boostView); pulse(lightningIcon); feedback(true)\n            val pkg = selectedPackage\n            val label = selectedLabel\n            if (pkg != null && label != null) startGameSession(pkg, label)\n            else statusView.text = "SELECT A GAME BELOW TO START A BOOST SESSION"\n        }\n        findViewById<Button>(R.id.dnd).setOnClickListener { pulse(it); feedback(false); openDndSettings() }
         findViewById<Button>(R.id.refreshStats).setOnClickListener { pulse(it); feedback(false); refreshAll() }
         findViewById<Button>(R.id.dndPermission).setOnClickListener { pulse(it); feedback(false); openDndSettings() }
         findViewById<Button>(R.id.usagePermission).setOnClickListener { pulse(it); feedback(false); openUsageSettings() }
@@ -99,9 +95,7 @@ class MainActivity : Activity() {
         })
     }
 
-    private fun applyGlobalUiPolish() {
-        window.addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON)
-    }
+    private fun applyGlobalUiPolish() {\n        // Do not keep the booster window awake unconditionally.\n    }
 
     private fun updateSessionTimer() {
         if (sessionStartedAt <= 0L) { timerView.text = "SESSION\n00:00:00"; return }
@@ -280,14 +274,6 @@ class MainActivity : Activity() {
             .putString("${pkg}_label", label)
             .putInt("${pkg}_launches", getSharedPreferences("game_profiles", MODE_PRIVATE).getInt("${pkg}_launches", 0) + 1)
             .apply()
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (selectedProfile.dnd && hasDndAccess()) {
-            getSharedPreferences("booster", MODE_PRIVATE).edit()
-                .putInt("previous_interruption_filter", notificationManager.currentInterruptionFilter)
-                .apply()
-            notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
-        }
-
         if (Settings.canDrawOverlays(this)) {
             val serviceIntent = Intent(this, BoosterService::class.java).apply {
                 action = BoosterService.ACTION_START
@@ -299,7 +285,6 @@ class MainActivity : Activity() {
             }
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
             sessionStartedAt = System.currentTimeMillis()
-            getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON)
             statusView.text = "BOOST SESSION ACTIVE • " + label.uppercase(Locale.ROOT)
         } else {
             statusView.text = "GAME LAUNCHED • ENABLE OVERLAY FOR FLOATING BOOST"
@@ -349,7 +334,7 @@ class MainActivity : Activity() {
             "${it.key}: ${formatPlayTime(it.value)}"
         }
         historyHint.text = "TODAY  $today\nTHIS MONTH  $month\n" + if (top.isBlank()) "No sessions this month yet." else "TOP: $top"
-        findViewById<HistoryChartView?>(R.id.historyChart)?.setData(byGame.values.toList())
+        findViewById<HistoryChartView>(R.id.historyChart).setData(byGame.values.toList())
     }
 
     private fun formatPlayTime(ms: Long): String {
