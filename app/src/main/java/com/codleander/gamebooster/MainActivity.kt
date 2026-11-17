@@ -17,7 +17,6 @@ import android.media.AudioManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.view.WindowManager.LayoutParams
-import android.graphics.drawable.GradientDrawable
 import java.util.Locale
 import org.json.JSONArray
 
@@ -110,8 +109,11 @@ class MainActivity : Activity() {
         timerView.text = String.format(Locale.US, "SESSION\n%02d:%02d:%02d", total/3600, (total%3600)/60, total%60)
     }
 
+    private var pingThread: Thread? = null
+
     private fun updatePing() {
-        Thread {
+        if (pingThread?.isAlive == true) return
+        pingThread = Thread {
             val start = System.nanoTime()
             val ok = runCatching { java.net.InetAddress.getByName("1.1.1.1").isReachable(1200) }.getOrDefault(false)
             val ms = (System.nanoTime() - start) / 1_000_000L
@@ -356,6 +358,8 @@ class MainActivity : Activity() {
         val minutes = totalMinutes % 60L
         return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
     }
+
+    private fun onSessionEnded() { showLastSessionOrReady(); showHistorySummary(); sessionStartedAt=0L }
 
     private fun updateHistoryOnly() {
         showHistorySummary()
