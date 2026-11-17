@@ -24,6 +24,7 @@ class MainActivity : Activity() {
     private lateinit var ramView: TextView
     private lateinit var thermalView: TextView
     private lateinit var refreshView: TextView
+    private lateinit var batteryView: TextView
     private lateinit var gamesContainer: LinearLayout
     private lateinit var lightningIcon: ImageView
     private lateinit var statusView: TextView
@@ -49,6 +50,7 @@ class MainActivity : Activity() {
         ramView = findViewById(R.id.ram)
         thermalView = findViewById(R.id.thermal)
         refreshView = findViewById(R.id.refresh)
+        batteryView = findViewById(R.id.battery)
         gamesContainer = findViewById(R.id.games)
         lightningIcon = findViewById(R.id.lightningIcon)
         statusView = findViewById(R.id.status)
@@ -282,6 +284,13 @@ class MainActivity : Activity() {
         thermalView.text = "THERMAL\n" + thermalLabel(thermal)
         @Suppress("DEPRECATION")
         refreshView.text = String.format(Locale.US, "DISPLAY\n%.0f Hz", windowManager.defaultDisplay.refreshRate)
+        val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+        val percent = if (level >= 0 && scale > 0) (level * 100 / scale) else -1
+        val batteryStatus = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val charging = batteryStatus == BatteryManager.BATTERY_STATUS_CHARGING || batteryStatus == BatteryManager.BATTERY_STATUS_FULL
+        batteryView.text = if (percent >= 0) "BATTERY\n$percent%${if (charging) " • CHARGING" else ""}" else "BATTERY\nN/A"
     }
 
     private fun thermalLabel(status: Int): String = when (status) {
@@ -332,7 +341,8 @@ class MainActivity : Activity() {
                 setTextColor(Color.rgb(234, 248, 255))
             }
             val type = TextView(this).apply {
-                text = if (isGame) "GAME • READY" else "APP • LAUNCHABLE"
+                val launches = getSharedPreferences("game_profiles", MODE_PRIVATE).getInt("${ri.activityInfo.packageName}_launches", 0)
+                text = if (isGame) "GAME • READY • $launches BOOSTS" else "APP • LAUNCHABLE • $launches BOOSTS"
                 textSize = 10f
                 setTextColor(Color.rgb(127, 166, 196))
             }
@@ -489,10 +499,12 @@ class MainActivity : Activity() {
         }
         val today = formatPlayTime(todayMs)
         val month = formatPlayTime(monthMs)
+        val peak = (0 until sessions.length()).mapNotNull { sessions.optJSONObject(it)?.optInt("peakThermal", -1) }.maxOrNull() ?: -1
         val top = byGame.entries.sortedByDescending { it.value }.take(3).joinToString("  •  ") {
             "${it.key}: ${formatPlayTime(it.value)}"
         }
-        historyHint.text = "TODAY  $today\nTHIS MONTH  $month\n" + if (top.isBlank()) "No sessions this month yet." else "TOP: $top"
+        val peakLabel = if (peak >= 0) thermalLabel(peak) else "N/A"
+        historyHint.text = "TODAY  $today\nTHIS MONTH  $month\nPEAK THERMAL  $peakLabel\n" + if (top.isBlank()) "No sessions this month yet." else "TOP: $top"
         val chartData: List<Pair<String, Long>> = byGame.entries
             .sortedByDescending { it.value }
             .take(8)
