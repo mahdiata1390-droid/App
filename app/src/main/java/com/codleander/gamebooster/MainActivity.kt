@@ -24,6 +24,8 @@ class MainActivity : Activity() {
     private lateinit var lightningIcon: ImageView
     private lateinit var statusView: TextView
     private lateinit var boostView: TextView
+    private var selectedPackage: String? = null
+    private var selectedLabel: String? = null
     private lateinit var dndState: TextView
     private lateinit var usageState: TextView
     private lateinit var overlayState: TextView
@@ -46,7 +48,7 @@ class MainActivity : Activity() {
 
         boostView.setOnClickListener {
             pulse(boostView); pulse(lightningIcon); feedback(true)
-            statusView.text = "SELECT A GAME BELOW TO START A BOOST SESSION"
+            statusView.text = if (selectedLabel != null) "READY • ${selectedLabel!!.uppercase(Locale.ROOT)}" else "SELECT A GAME BELOW TO START A BOOST SESSION"
         }
         findViewById<Button>(R.id.dnd).setOnClickListener { pulse(it); feedback(false); openDndSettings() }
         findViewById<Button>(R.id.refreshStats).setOnClickListener { pulse(it); feedback(false); refreshAll() }
@@ -71,7 +73,7 @@ class MainActivity : Activity() {
         updateStats()
         loadGames()
         updatePermissionStates()
-        statusView.text = "SYSTEM READY • REAL DEVICE DATA"
+        showLastSessionOrReady()
     }
 
     private fun feedback(strong: Boolean) {
@@ -154,6 +156,12 @@ class MainActivity : Activity() {
             }
             nameBox.addView(name); nameBox.addView(type)
 
+            row.setOnClickListener {
+                selectedPackage = ri.activityInfo.packageName
+                selectedLabel = ri.loadLabel(pm).toString()
+                statusView.text = "SELECTED • ${selectedLabel!!.uppercase(Locale.ROOT)} • READY TO BOOST"
+            }
+
             val launch = Button(this).apply {
                 text = "BOOST"
                 setTextColor(Color.rgb(89, 216, 255))
@@ -172,6 +180,12 @@ class MainActivity : Activity() {
     }
 
     private fun startGameSession(pkg: String, label: String) {
+        selectedPackage = pkg
+        selectedLabel = label
+        getSharedPreferences("game_profiles", MODE_PRIVATE).edit()
+            .putString("${pkg}_label", label)
+            .putInt("${pkg}_launches", getSharedPreferences("game_profiles", MODE_PRIVATE).getInt("${pkg}_launches", 0) + 1)
+            .apply()
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (hasDndAccess()) {
             getSharedPreferences("booster", MODE_PRIVATE).edit()
@@ -207,6 +221,18 @@ class MainActivity : Activity() {
 
     private fun openOverlaySettings() {
         startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName)))
+    }
+
+    private fun showLastSessionOrReady() {
+        val prefs = getSharedPreferences("booster_history", MODE_PRIVATE)
+        val label = prefs.getString("last_label", null)
+        val duration = prefs.getLong("last_duration_ms", 0L)
+        if (label != null && duration > 0L) {
+            val minutes = duration / 60000L
+            statusView.text = "LAST SESSION • ${label.uppercase(Locale.ROOT)} • ${minutes} MIN"
+        } else {
+            statusView.text = "SYSTEM READY • REAL DEVICE DATA"
+        }
     }
 
     private fun updatePermissionStates() {
