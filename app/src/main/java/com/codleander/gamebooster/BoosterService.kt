@@ -311,12 +311,13 @@ class BoosterService : Service() {
                 android.app.usage.UsageEvents.Event.MOVE_TO_BACKGROUND,
                 android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED,
                 android.app.usage.UsageEvents.Event.ACTIVITY_STOPPED -> {
-                    // A background transition is authoritative only when it is
-                    // newer than the last foreground transition. Clear the
-                    // active package so we do not keep a game "foreground"
-                    // forever after the user leaves it.
-                    latestTime = event.timeStamp
-                    latestPackage = null
+                    // Only clear the package that was actually known to be
+                    // foreground. Background events from another package must
+                    // not erase a newer foreground game transition.
+                    if (event.packageName == latestPackage) {
+                        latestTime = event.timeStamp
+                        latestPackage = null
+                    }
                 }
             }
         }
