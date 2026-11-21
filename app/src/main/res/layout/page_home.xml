@@ -150,6 +150,7 @@
                 </FrameLayout>
 
                 <TextView
+                    android:id="@+id/homeBoostTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
@@ -160,6 +161,7 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/homeBoostHint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
@@ -168,6 +170,14 @@
                     android:textSize="12sp" />
             </LinearLayout>
         </FrameLayout>
+
+        <Button
+            android:id="@+id/stopBoostButton"
+            style="@style/GbGhostButton"
+            android:layout_width="match_parent"
+            android:layout_marginTop="2dp"
+            android:text="@string/stop_boost"
+            android:visibility="gone" />
 
         <GridLayout
             android:layout_width="match_parent"

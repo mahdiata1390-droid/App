@@ -47,4 +47,11 @@ object Prefs {
     fun setLanguage(context: Context, language: String) {
         prefs(context).edit().putString("language", language).apply()
     }
+
+    fun displayName(context: Context): String =
+        prefs(context).getString("display_name", "")?.trim() ?: ""
+
+    fun setDisplayName(context: Context, name: String) {
+        prefs(context).edit().putString("display_name", name.trim()).apply()
+    }
 }

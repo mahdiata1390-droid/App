@@ -39,10 +39,13 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/profileCard"
             android:layout_width="match_parent"
             android:layout_height="76dp"
             android:layout_marginTop="6dp"
             android:background="@drawable/bg_card"
+            android:clickable="true"
+            android:focusable="true"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="14dp"
@@ -75,9 +78,10 @@
                 android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/profileName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/profile_name"
+                    android:text="@string/profile_name_hint"
                     android:textColor="@color/gb_text"
                     android:textSize="16sp"
                     android:textStyle="bold" />

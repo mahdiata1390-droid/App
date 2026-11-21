@@ -115,7 +115,7 @@
     <string name="mb_freed">+%1$d مگابایت</string>
 
     <string name="version_label">نسخه %1$s</string>
-    <string name="about_feature_1">بهینه‌شده توسط Uchiha Clan</string>
+    <string name="about_feature_1">بهینه‌شده برای دستگاه تو</string>
     <string name="about_feature_2">ویژگی‌های ویژه فعال</string>
     <string name="about_feature_3">بدون تبلیغات</string>
     <string name="about_feature_4">ساخته‌شده با ♥ برای گیمرها</string>
@@ -134,7 +134,12 @@
     <string name="splash_booster">BOOSTER</string>
     <string name="dash">—</string>
     <string name="zero">۰</string>
-    <string name="profile_name">Uchiha Clan</string>
+    <string name="profile_name_hint">نام شما</string>
+    <string name="profile_edit_title">نام شما</string>
+    <string name="save">ذخیره</string>
+    <string name="boosting_active">در حال بوست</string>
+    <string name="stop_boost">پایان بوست</string>
+    <string name="session_already_active">یک بوست در حال اجراست — اول تمومش کن</string>
     <string name="back">بازگشت</string>
     <string name="on_battery">روی باتری</string>
     <string name="percent_value">%1$d%%</string>

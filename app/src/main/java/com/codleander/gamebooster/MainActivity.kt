@@ -137,6 +137,7 @@ class MainActivity : Activity() {
         super.onResume()
         startStatsLoop()
         updateHomeChip()
+        refreshSessionUi()
         refreshHomeStatus()
         refreshPermissions()
         syncToggles()
@@ -233,6 +234,7 @@ class MainActivity : Activity() {
         }
         findViewById<View>(R.id.homeLibrary).setOnClickListener { showPage(PAGE_LIBRARY) }
         findViewById<View>(R.id.homeGameChip).setOnClickListener { showPage(PAGE_LIBRARY) }
+        findViewById<View>(R.id.stopBoostButton).setOnClickListener { stopActiveSession() }
     }
 
     private val statsTick = object : Runnable {
@@ -241,6 +243,7 @@ class MainActivity : Activity() {
             refreshDeviceStats()
             refreshPing()
             updateHomeChip()
+            refreshSessionUi()
             ui.postDelayed(this, 1000L)
         }
     }
@@ -330,18 +333,20 @@ class MainActivity : Activity() {
         val icon = findViewById<ImageView>(R.id.homeGameIcon)
 
         val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
-        val activeLabel = runtime.getString("target_label", null)
-        val startedAt = runtime.getLong("session_started_at", 0L)
+        val session = activeBoost()
 
         when {
-            !activeLabel.isNullOrBlank() && startedAt > 0L -> {
+            session != null -> {
                 chip.visibility = View.VISIBLE
-                name.text = activeLabel
+                name.text = session.label
                 state.text = getString(
                     R.string.session_running,
-                    formatDuration(System.currentTimeMillis() - startedAt)
+                    formatDuration(System.currentTimeMillis() - session.startedAt)
                 )
-                showAppIcon(icon, runtime.getString("target_package", null))
+                showAppIcon(
+                    icon,
+                    if (session.isGame) runtime.getString("target_package", null) else null
+                )
             }
             selectedGame != null -> {
                 val game = selectedGame!!
@@ -371,11 +376,11 @@ class MainActivity : Activity() {
 
     private fun refreshHomeStatus() {
         val status = findViewById<TextView>(R.id.homeStatus)
-        val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
-        val active = runtime.getString("target_label", null)
+        val session = activeBoost()
         val game = selectedGame
         when {
-            !active.isNullOrBlank() -> status.text = getString(R.string.status_active_short, active)
+            session != null -> status.text =
+                getString(R.string.status_active_short, session.label)
             game != null -> status.text = getString(R.string.status_selected, game.label)
             else -> status.setText(R.string.status_ready)
         }
@@ -576,6 +581,10 @@ class MainActivity : Activity() {
 
     private fun startBoost(game: GameInfo?) {
         if (boosting) return
+        if (activeBoost() != null) {
+            toast(getString(R.string.session_already_active))
+            return
+        }
         boosting = true
         boostCancelled = false
         selectedGame = game ?: selectedGame
@@ -750,12 +759,16 @@ class MainActivity : Activity() {
             )
         )
         successFeedback()
-        if (game != null) launchGameSession(game)
-        restoreDeviceBoostDnd()
+
+        when {
+            game == null -> activateDeviceBoost(startedAt)
+            !launchGameSession(game) -> restoreDeviceBoostDnd()
+        }
 
         ui.postDelayed({
             if (isFinishing || isDestroyed) return@postDelayed
             showPage(PAGE_HOME)
+            refreshSessionUi()
             findViewById<TextView>(R.id.homeStatus).text =
                 getString(R.string.status_boost_freed, freedMb)
             refreshHistory()
@@ -771,16 +784,95 @@ class MainActivity : Activity() {
         showPage(PAGE_HOME)
     }
 
-    private fun launchGameSession(game: GameInfo) {
+    private data class ActiveBoost(val label: String, val startedAt: Long, val isGame: Boolean)
+
+    private fun activeBoost(): ActiveBoost? {
+        val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
+        val gameLabel = runtime.getString("target_label", null)
+        val gameStart = runtime.getLong("session_started_at", 0L)
+        if (!gameLabel.isNullOrBlank() && gameStart > 0L) {
+            return ActiveBoost(gameLabel, gameStart, true)
+        }
+        if (runtime.getBoolean("device_boost_active", false)) {
+            val deviceStart = runtime.getLong("device_boost_started_at", 0L)
+            if (deviceStart > 0L) {
+                return ActiveBoost(getString(R.string.device_boost_label), deviceStart, false)
+            }
+        }
+        return null
+    }
+
+    private fun activateDeviceBoost(startedAt: Long) {
+        getSharedPreferences("booster_runtime", MODE_PRIVATE).edit()
+            .putBoolean("device_boost_active", true)
+            .putLong("device_boost_started_at", startedAt)
+            .apply()
+    }
+
+    private fun refreshSessionUi() {
+        if (boosting) return
+        val session = activeBoost()
+        val title = findViewById<TextView>(R.id.homeBoostTitle)
+        val hint = findViewById<TextView>(R.id.homeBoostHint)
+        val stop = findViewById<View>(R.id.stopBoostButton)
+        val ring = findViewById<BoostRingView>(R.id.homeRing)
+        if (session != null) {
+            title.setText(R.string.boosting_active)
+            hint.text = getString(
+                R.string.session_running,
+                formatDuration(System.currentTimeMillis() - session.startedAt)
+            )
+            stop.visibility = View.VISIBLE
+            ring.setProgressNow(1f)
+        } else {
+            title.setText(R.string.boost)
+            hint.setText(R.string.tap_to_boost)
+            stop.visibility = View.GONE
+            ring.setProgressNow(0f)
+        }
+    }
+
+    private fun stopActiveSession() {
+        val session = activeBoost() ?: return
+        feedback(true)
+        val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
+        if (session.isGame) {
+            val stopIntent = Intent(this, BoosterService::class.java).apply {
+                action = BoosterService.ACTION_STOP
+            }
+            if (runCatching { startService(stopIntent) }.isFailure) {
+                runCatching { stopService(Intent(this, BoosterService::class.java)) }
+            }
+            runtime.edit()
+                .remove("target_label")
+                .remove("session_started_at")
+                .remove("active_play_ms")
+                .remove("last_heartbeat")
+                .remove("peak_thermal")
+                .apply()
+        } else {
+            restoreDeviceBoostDnd()
+            runtime.edit()
+                .remove("device_boost_active")
+                .remove("device_boost_started_at")
+                .apply()
+        }
+        refreshSessionUi()
+        updateHomeChip()
+        refreshHomeStatus()
+        refreshHistory()
+    }
+
+    private fun launchGameSession(game: GameInfo): Boolean {
         val launch = packageManager.getLaunchIntentForPackage(game.packageName)
         if (launch == null) {
             toast(getString(R.string.launch_failed, game.label))
-            return
+            return false
         }
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (runCatching { startActivity(launch) }.isFailure) {
             toast(getString(R.string.launch_failed, game.label))
-            return
+            return false
         }
         val serviceIntent = Intent(this, BoosterService::class.java).apply {
             action = BoosterService.ACTION_START
@@ -795,11 +887,14 @@ class MainActivity : Activity() {
             else startService(serviceIntent)
         }
         selectedGame = game
+        return true
     }
 
     // ------------------------------------------------------------------ settings
 
     private fun bindSettings() {
+        findViewById<View>(R.id.profileCard).setOnClickListener { editProfileName() }
+        syncProfileName()
         findViewById<View>(R.id.rowBoostMode).setOnClickListener { chooseBoostMode() }
         findViewById<View>(R.id.rowAppearance).setOnClickListener { chooseAppearance() }
         findViewById<View>(R.id.rowLanguage).setOnClickListener { chooseLanguage() }
@@ -831,6 +926,34 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.languageValue).text =
             if (Prefs.language(this) == "fa") "فارسی" else "English"
         syncToggles()
+    }
+
+    private fun syncProfileName() {
+        val saved = Prefs.displayName(this)
+        findViewById<TextView>(R.id.profileName).text =
+            saved.ifBlank { getString(R.string.profile_name_hint) }
+    }
+
+    private fun editProfileName() {
+        val input = EditText(this).apply {
+            setText(Prefs.displayName(this@MainActivity))
+            hint = getString(R.string.profile_name_hint)
+            setSingleLine(true)
+            setSelection(text.length)
+        }
+        val container = FrameLayout(this).apply {
+            setPadding(dp(20), dp(6), dp(20), 0)
+            addView(input)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.profile_edit_title)
+            .setView(container)
+            .setPositiveButton(R.string.save) { _, _ ->
+                Prefs.setDisplayName(this, input.text.toString())
+                syncProfileName()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun syncToggles() {
