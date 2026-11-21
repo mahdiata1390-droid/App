@@ -51,6 +51,7 @@ class MainActivity : Activity() {
     private var tapSound = 0
     private var successSound = 0
     private var errorSound = 0
+    private var dashboardRunning = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,10 +105,17 @@ class MainActivity : Activity() {
             recoverStaleRuntimeIfNeeded()
             syncActiveSessionStart()
             updatePermissionStates()
+            startLiveDashboard()
         }
     }
 
+    override fun onPause() {
+        stopLiveDashboard()
+        super.onPause()
+    }
+
     override fun onDestroy() {
+        stopLiveDashboard()
         uiHandler.removeCallbacksAndMessages(null)
         tone?.release()
         tone = null
@@ -116,16 +124,27 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
+    private val dashboardRunnable = object : Runnable {
+        override fun run() {
+            if (!dashboardRunning) return
+            updateStats()
+            updateNetwork()
+            updatePing()
+            updateSessionTimer()
+            uiHandler.postDelayed(this, 1000L)
+        }
+    }
+
     private fun startLiveDashboard() {
-        uiHandler.post(object : Runnable {
-            override fun run() {
-                updateStats()
-                updateNetwork()
-                updatePing()
-                updateSessionTimer()
-                uiHandler.postDelayed(this, 1000L)
-            }
-        })
+        if (dashboardRunning) return
+        dashboardRunning = true
+        uiHandler.removeCallbacks(dashboardRunnable)
+        uiHandler.post(dashboardRunnable)
+    }
+
+    private fun stopLiveDashboard() {
+        dashboardRunning = false
+        uiHandler.removeCallbacks(dashboardRunnable)
     }
 
     private fun applyGlobalUiPolish() {
