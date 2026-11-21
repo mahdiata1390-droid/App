@@ -1,0 +1,4 @@
+Game Booster permanent release signing certificate
+SHA-256: E7:61:FA:70:07:14:5F:2A:37:79:B2:F6:48:8E:5C:7E:56:43:35:A6:3D:AC:41:62:D1:F1:7E:1F:33:1C:A4:47
+Alias: gamebooster
+Application ID: com.codleander.gamebooster
