@@ -530,56 +530,61 @@ class MainActivity : Activity() {
         val activePackage = runtime.getString("target_package", null)
         val activeStart = runtime.getLong("session_started_at", 0L)
         val alreadyActive = activeStart > 0L && activePackage == pkg
-
         val prefs = getSharedPreferences("game_profiles", MODE_PRIVATE)
-        var sessionRequested = false
-        if (hasUsageAccess()) {
-            val serviceIntent = Intent(this, BoosterService::class.java).apply {
-                action = BoosterService.ACTION_START
-                putExtra(BoosterService.EXTRA_PACKAGE, pkg)
-                putExtra("profile_dnd", selectedProfile.dnd)
-                putExtra("profile_awake", selectedProfile.keepAwake)
-                putExtra("profile_brightness", selectedProfile.lockBrightness)
-                putExtra("profile_hud", selectedProfile.hud)
-            }
-            try {
-                if (!alreadyActive) {
-                    if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
-                }
-                sessionStartedAt = if (alreadyActive) activeStart else System.currentTimeMillis()
-                sessionRequested = true
-                successFeedback()
-                pulse(boostView)
-                pulse(lightningIcon)
-                statusView.text = "BOOST STARTING • " + label.uppercase(Locale.ROOT)
-            } catch (e: SecurityException) {
-                errorFeedback()
-                statusView.text = "GAME LAUNCHING • BOOST SERVICE PERMISSION BLOCKED"
-            } catch (e: RuntimeException) {
-                errorFeedback()
-                statusView.text = "GAME LAUNCHING • BOOST SERVICE COULD NOT START"
-            }
-        } else {
-            statusView.text = "GAME LAUNCHED • ENABLE USAGE ACCESS FOR BOOST"
-        }
 
-        if (!sessionRequested) sessionStartedAt = 0L
-
+        // Launch first so a failed launch can never leave an orphan monitoring service.
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching {
+        try {
             startActivity(launchIntent)
-            if (sessionRequested && !alreadyActive) {
-                prefs.edit()
-                    .putString("${pkg}_label", label)
-                    .putInt("${pkg}_launches", prefs.getInt("${pkg}_launches", 0) + 1)
-                    .apply()
-            }
-        }.onFailure {
+        } catch (e: RuntimeException) {
             errorFeedback()
             statusView.text = "GAME COULD NOT BE LAUNCHED • $label"
+            sessionStartedAt = 0L
+            return
+        }
+
+        if (alreadyActive) {
+            sessionStartedAt = activeStart
+            statusView.text = "BOOST ALREADY ACTIVE • ${label.uppercase(Locale.ROOT)}"
+            return
+        }
+
+        if (!hasUsageAccess()) {
+            sessionStartedAt = 0L
+            statusView.text = "GAME LAUNCHED • ENABLE USAGE ACCESS FOR BOOST"
+            return
+        }
+
+        val serviceIntent = Intent(this, BoosterService::class.java).apply {
+            action = BoosterService.ACTION_START
+            putExtra(BoosterService.EXTRA_PACKAGE, pkg)
+            putExtra("profile_dnd", selectedProfile.dnd)
+            putExtra("profile_awake", selectedProfile.keepAwake)
+            putExtra("profile_brightness", selectedProfile.lockBrightness)
+            putExtra("profile_hud", selectedProfile.hud)
+        }
+
+        try {
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
+            sessionStartedAt = System.currentTimeMillis()
+            prefs.edit()
+                .putString("${pkg}_label", label)
+                .putInt("${pkg}_launches", prefs.getInt("${pkg}_launches", 0) + 1)
+                .apply()
+            successFeedback()
+            pulse(boostView)
+            pulse(lightningIcon)
+            statusView.text = "BOOST STARTING • ${label.uppercase(Locale.ROOT)}"
+        } catch (e: SecurityException) {
+            errorFeedback()
+            sessionStartedAt = 0L
+            statusView.text = "GAME RUNNING • BOOST SERVICE PERMISSION BLOCKED"
+        } catch (e: RuntimeException) {
+            errorFeedback()
+            sessionStartedAt = 0L
+            statusView.text = "GAME RUNNING • BOOST SERVICE COULD NOT START"
         }
     }
-
     private fun openDndSettings() {
         runCatching { startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
             .onFailure { statusView.text = "DND SETTINGS ARE NOT AVAILABLE ON THIS DEVICE" }
