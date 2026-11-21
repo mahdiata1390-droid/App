@@ -253,12 +253,14 @@ class BoosterService : Service() {
         removeBubble()
         persistRuntimeHeartbeat()
         saveSessionHistory()
-        restoreDnd()
-        restoreScreenTimeout()
-        restoreBrightness()
-        getSharedPreferences("booster_runtime", MODE_PRIVATE).edit()
-            .clear()
-            .apply()
+        val dndRestored = restoreDnd()
+        val timeoutRestored = restoreScreenTimeout()
+        val brightnessRestored = restoreBrightness()
+        if (dndRestored && timeoutRestored && brightnessRestored) {
+            getSharedPreferences("booster_runtime", MODE_PRIVATE).edit().clear().apply()
+        } else {
+            persistRuntimeHeartbeat()
+        }
         super.onDestroy()
     }
 
@@ -291,29 +293,39 @@ class BoosterService : Service() {
         val end = System.currentTimeMillis()
         val events = usm.queryEvents(end - 15_000L, end)
         val event = android.app.usage.UsageEvents.Event()
-        var latestPkg = lastForegroundPackage
-        var latestTime = 0L
+
+        var latestPackage = lastForegroundPackage
+        var latestTime = lastForegroundEventAt
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            val foregroundEvent =
-                event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND ||
-                (Build.VERSION.SDK_INT >= 29 &&
-                    event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED)
-            if (foregroundEvent && event.timeStamp >= latestTime) {
-                latestTime = event.timeStamp
-                latestPkg = event.packageName
+            if (event.timeStamp < latestTime) continue
+
+            when (event.eventType) {
+                android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND,
+                android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED -> {
+                    latestTime = event.timeStamp
+                    latestPackage = event.packageName
+                }
+
+                android.app.usage.UsageEvents.Event.MOVE_TO_BACKGROUND,
+                android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED,
+                android.app.usage.UsageEvents.Event.ACTIVITY_STOPPED -> {
+                    // A background transition is authoritative only when it is
+                    // newer than the last foreground transition. Clear the
+                    // active package so we do not keep a game "foreground"
+                    // forever after the user leaves it.
+                    latestTime = event.timeStamp
+                    latestPackage = null
+                }
             }
         }
 
-        if (latestTime > 0L) {
-            lastForegroundPackage = latestPkg
+        if (latestTime > lastForegroundEventAt) {
             lastForegroundEventAt = latestTime
+            lastForegroundPackage = latestPackage
         }
 
-        // UsageStats reports foreground transitions, not a heartbeat while an
-        // activity remains visible. Do not expire the last known package just
-        // because no new transition event arrived for 20 seconds.
         return lastForegroundPackage
     }
 
@@ -573,61 +585,96 @@ class BoosterService : Service() {
     private fun formatDuration(ms:Long):String { val s=ms/1000; return String.format(Locale.US,"%02d:%02d:%02d",s/3600,(s%3600)/60,s%60) }
     private fun thermalLabel(s:Int):String=when(s){PowerManager.THERMAL_STATUS_NONE->"NORMAL";PowerManager.THERMAL_STATUS_LIGHT->"LIGHT";PowerManager.THERMAL_STATUS_MODERATE->"MODERATE";PowerManager.THERMAL_STATUS_SEVERE->"SEVERE";PowerManager.THERMAL_STATUS_CRITICAL->"CRITICAL";PowerManager.THERMAL_STATUS_EMERGENCY->"EMERGENCY";PowerManager.THERMAL_STATUS_SHUTDOWN->"SHUTDOWN";else->"N/A"}
 
-    private fun restoreScreenTimeout() {
-        if (screenTimeoutChangedByService && sessionStartScreenTimeout > 0L && Settings.System.canWrite(this)) {
-            val current = runCatching {
-                Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
-            }.getOrNull()
-            val applied = getSharedPreferences("booster_runtime", MODE_PRIVATE)
-                .getLong("applied_screen_timeout", SCREEN_ON_TIMEOUT_MS)
-            if (SessionGuards.shouldRestoreLong(screenTimeoutChangedByService, sessionStartScreenTimeout, current, applied)) {
-                runCatching {
-                    Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, sessionStartScreenTimeout)
-                }
-            }
+    private fun restoreScreenTimeout(): Boolean {
+        if (!screenTimeoutChangedByService) return true
+        if (!Settings.System.canWrite(this)) return false
+
+        val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
+        val previous = runtime.getLong("previous_screen_timeout", sessionStartScreenTimeout)
+        val applied = runtime.getLong("applied_screen_timeout", SCREEN_ON_TIMEOUT_MS)
+        if (previous <= 0L) return true
+
+        val current = runCatching {
+            Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
+        }.getOrNull() ?: return false
+
+        if (!SessionGuards.shouldRestoreLong(true, previous, current, applied)) {
+            sessionStartScreenTimeout = -1L
+            screenTimeoutChangedByService = false
+            return true
         }
-        sessionStartScreenTimeout = -1L
-        screenTimeoutChangedByService = false
+
+        val restored = runCatching {
+            Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, previous)
+            Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT) == previous
+        }.getOrDefault(false)
+
+        if (restored) {
+            sessionStartScreenTimeout = -1L
+            screenTimeoutChangedByService = false
+        }
+        return restored
     }
 
-    private fun restoreBrightness() {
-        if (brightnessChangedByService && sessionStartBrightness >= 0f && Settings.System.canWrite(this)) {
-            val current = runCatching {
-                Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
-            }.getOrNull()
-            val locked = sessionStartBrightness.toInt().coerceIn(0, 255)
-            if (SessionGuards.shouldRestoreInt(brightnessChangedByService, sessionStartBrightness.toInt().coerceIn(0, 255), current, locked)) {
-                runCatching {
-                    Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, locked)
-                }
-            }
+    private fun restoreBrightness(): Boolean {
+        if (!brightnessChangedByService) return true
+        if (!Settings.System.canWrite(this)) return false
+
+        val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
+        val previous = runtime.getInt("previous_brightness", sessionStartBrightness.toInt().coerceIn(0, 255))
+        if (previous < 0) return true
+
+        val current = runCatching {
+            Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+        }.getOrNull() ?: return false
+
+        if (!SessionGuards.shouldRestoreInt(true, previous, current, previous)) {
+            sessionStartBrightness = -1f
+            brightnessChangedByService = false
+            return true
         }
-        sessionStartBrightness = -1f
-        brightnessChangedByService = false
+
+        val restored = runCatching {
+            Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, previous)
+            Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS) == previous
+        }.getOrDefault(false)
+
+        if (restored) {
+            sessionStartBrightness = -1f
+            brightnessChangedByService = false
+        }
+        return restored
     }
 
-    private fun restoreDnd() {
+    private fun restoreDnd(): Boolean {
+        if (!dndChangedByService) return true
+        if (dndChangedByUser) return true
+
         val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
         val previous = runtime.getInt("previous_interruption_filter", -1)
         val expected = runtime.getInt(
             "expected_interruption_filter",
             NotificationManager.INTERRUPTION_FILTER_PRIORITY
         )
-        if (previous < 0 || !dndChangedByService || dndChangedByUser) {
-            dndChangedByService = false
-            dndChangedByUser = false
-            return
-        }
+        if (previous < 0) return true
 
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.isNotificationPolicyAccessGranted &&
-            nm.currentInterruptionFilter == expected
-        ) {
-            runCatching { nm.setInterruptionFilter(previous) }
+        if (!nm.isNotificationPolicyAccessGranted) return false
+        if (nm.currentInterruptionFilter != expected) {
+            dndChangedByService = false
+            return true
         }
 
-        dndChangedByService = false
-        dndChangedByUser = false
+        val restored = runCatching {
+            nm.setInterruptionFilter(previous)
+            nm.currentInterruptionFilter == previous
+        }.getOrDefault(false)
+
+        if (restored) {
+            dndChangedByService = false
+            dndChangedByUser = false
+        }
+        return restored
     }
 
     private fun createChannel() {
