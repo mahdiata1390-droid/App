@@ -63,7 +63,17 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+
+        try {
+            setContentView(R.layout.activity_main)
+            bindViewsAndStart()
+        } catch (t: Throwable) {
+            android.util.Log.e("GameBooster", "Startup crash", t)
+            showStartupFailure(t)
+        }
+    }
+
+    private fun bindViewsAndStart() {
         ramView = findViewById(R.id.ram)
         thermalView = findViewById(R.id.thermal)
         refreshView = findViewById(R.id.refresh)
@@ -88,17 +98,22 @@ class MainActivity : Activity() {
         permissionPage = findViewById(R.id.permissionPage)
         historyPage = findViewById(R.id.historyPage)
         aboutPage = findViewById(R.id.aboutPage)
+
         setupNavigation()
         applyGlobalUiPolish()
-        recoverStaleRuntimeIfNeeded()
+        runCatching { recoverStaleRuntimeIfNeeded() }
+            .onFailure { android.util.Log.e("GameBooster", "Recovery failed during startup", it) }
         startLiveDashboard()
-        tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
-        sounds = SoundPool.Builder().setMaxStreams(3).build().also {
-            boostSound = loadRawSound(it, "sfx_boost")
-            tapSound = loadRawSound(it, "sfx_tap")
-            successSound = loadRawSound(it, "sfx_success")
-            errorSound = loadRawSound(it, "sfx_error")
-        }
+
+        tone = runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75) }.getOrNull()
+        sounds = runCatching {
+            SoundPool.Builder().setMaxStreams(3).build().also {
+                boostSound = loadRawSound(it, "sfx_boost")
+                tapSound = loadRawSound(it, "sfx_tap")
+                successSound = loadRawSound(it, "sfx_success")
+                errorSound = loadRawSound(it, "sfx_error")
+            }
+        }.getOrNull()
 
         boostView.setOnClickListener {
             pulse(boostView); pulse(lightningIcon); feedback(true)
@@ -118,11 +133,38 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.endBoost).setOnClickListener { pulse(it); stopService(Intent(this, BoosterService::class.java)); showPage(homePage); showLastSessionOrReady() }
         findViewById<Button>(R.id.permissionButton).setOnClickListener { pulse(it); showPage(permissionPage); updatePermissionStates() }
         findViewById<TextView>(R.id.homePremium).setOnClickListener { pulse(it); showPage(aboutPage) }
-        runCatching { refreshAll() }.onFailure {
-            statusView.text = "SYSTEM READY • SELECT A GAME"
-            android.util.Log.e("GameBooster", "Initial refresh failed", it)
+
+        runCatching { refreshAll() }
+            .onFailure {
+                statusView.text = "SYSTEM READY • SELECT A GAME"
+                android.util.Log.e("GameBooster", "Initial refresh failed", it)
+            }
+
+        findViewById<View>(R.id.splashPage).postDelayed({
+            findViewById<View>(R.id.splashPage).animate()
+                .alpha(0f)
+                .setDuration(280L)
+                .withEndAction { findViewById<View>(R.id.splashPage).visibility = View.GONE }
+                .start()
+        }, 1100L)
+    }
+
+    private fun showStartupFailure(t: Throwable) {
+        val message = buildString {
+            append("GAME BOOSTER\n\nStartup error\n")
+            append(t.javaClass.simpleName)
+            append("\n\n")
+            append((t.message ?: "Unknown error").take(700))
+            append("\n\nPlease send a screenshot of this screen.")
         }
-        findViewById<View>(R.id.splashPage).postDelayed({ findViewById<View>(R.id.splashPage).animate().alpha(0f).setDuration(280L).withEndAction { findViewById<View>(R.id.splashPage).visibility = View.GONE }.start() }, 1100L)
+        setContentView(TextView(this).apply {
+            text = message
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.rgb(2, 8, 19))
+            gravity = Gravity.CENTER
+            setPadding(32, 32, 32, 32)
+        })
     }
 
     override fun onResume() {
