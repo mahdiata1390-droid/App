@@ -15,14 +15,21 @@ android {
         versionName '1.0.0'
     }
 
+    signingConfigs {
+        release {
+            storeFile file("gamebooster-release.jks")
+            storePassword "GB-Release-2026!StormKey"
+            keyAlias "gamebooster"
+            keyPassword "GB-Release-2026!StormKey"
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             shrinkResources false
             debuggable false
-            // Temporary CI signing for device-install verification.
-            // This must be replaced with the permanent Myket release keystore before public distribution.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
         }
         debug {
             minifyEnabled false
