@@ -53,6 +53,13 @@ class MainActivity : Activity() {
     private var successSound = 0
     private var errorSound = 0
     private var dashboardRunning = false
+    private lateinit var homePage: View
+    private lateinit var gamesPage: View
+    private lateinit var boostingPage: View
+    private lateinit var settingsPage: View
+    private lateinit var permissionPage: View
+    private lateinit var historyPage: View
+    private lateinit var aboutPage: View
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,6 +81,14 @@ class MainActivity : Activity() {
         pingView = findViewById(R.id.pingStatus)
         notificationState = findViewById(R.id.notificationPermissionState)
         writeSettingsState = findViewById(R.id.writeSettingsPermissionState)
+        homePage = findViewById(R.id.homePage)
+        gamesPage = findViewById(R.id.gamesPage)
+        boostingPage = findViewById(R.id.boostingPage)
+        settingsPage = findViewById(R.id.settingsPage)
+        permissionPage = findViewById(R.id.permissionPage)
+        historyPage = findViewById(R.id.historyPage)
+        aboutPage = findViewById(R.id.aboutPage)
+        setupNavigation()
         applyGlobalUiPolish()
         recoverStaleRuntimeIfNeeded()
         startLiveDashboard()
@@ -99,6 +114,8 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.overlayPermission).setOnClickListener { pulse(it); feedback(false); openOverlaySettings() }
         findViewById<Button>(R.id.notificationPermission).setOnClickListener { pulse(it); feedback(false); openNotificationPermission() }
         findViewById<Button>(R.id.writeSettingsPermission).setOnClickListener { pulse(it); feedback(false); openWriteSettings() }
+        findViewById<Button>(R.id.boostBack).setOnClickListener { pulse(it); showPage(homePage) }
+        findViewById<Button>(R.id.endBoost).setOnClickListener { pulse(it); stopService(Intent(this, BoosterService::class.java)); showPage(homePage); showLastSessionOrReady() }
         refreshAll()
     }
 
@@ -152,6 +169,29 @@ class MainActivity : Activity() {
 
     private fun applyGlobalUiPolish() {
         // Do not keep the booster window awake unconditionally.
+    }
+
+    private fun setupNavigation() {
+        findViewById<View>(R.id.navHome).setOnClickListener { showPage(homePage) }
+        findViewById<View>(R.id.navGames).setOnClickListener { showPage(gamesPage); loadGames() }
+        findViewById<View>(R.id.navHistory).setOnClickListener { showPage(historyPage); showHistorySummary() }
+        findViewById<View>(R.id.navSettings).setOnClickListener { showPage(settingsPage) }
+    }
+
+    private fun showPage(page: View) {
+        val pages = listOf(homePage, gamesPage, boostingPage, settingsPage, permissionPage, historyPage, aboutPage)
+        pages.forEach { it.visibility = if (it === page) View.VISIBLE else View.GONE }
+        findViewById<View>(R.id.bottomNav).visibility = if (page === boostingPage || page === aboutPage || page === permissionPage) View.GONE else View.VISIBLE
+        val navHome = findViewById<TextView>(R.id.navHome)
+        val navGames = findViewById<TextView>(R.id.navGames)
+        val navHistory = findViewById<TextView>(R.id.navHistory)
+        val navSettings = findViewById<TextView>(R.id.navSettings)
+        val muted = Color.rgb(127, 166, 196)
+        val active = Color.rgb(89, 216, 255)
+        navHome.setTextColor(if (page === homePage) active else muted)
+        navGames.setTextColor(if (page === gamesPage) active else muted)
+        navHistory.setTextColor(if (page === historyPage) active else muted)
+        navSettings.setTextColor(if (page === settingsPage) active else muted)
     }
 
     private fun recoverStaleRuntimeIfNeeded() {
@@ -541,6 +581,7 @@ class MainActivity : Activity() {
         selectedPackage = pkg
         selectedLabel = label
         selectedProfile = loadProfile(pkg)
+        showPage(boostingPage)
 
         val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
         if (launchIntent == null) {
