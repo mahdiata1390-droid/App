@@ -116,6 +116,8 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.writeSettingsPermission).setOnClickListener { pulse(it); feedback(false); openWriteSettings() }
         findViewById<Button>(R.id.boostBack).setOnClickListener { pulse(it); showPage(homePage) }
         findViewById<Button>(R.id.endBoost).setOnClickListener { pulse(it); stopService(Intent(this, BoosterService::class.java)); showPage(homePage); showLastSessionOrReady() }
+        findViewById<Button>(R.id.permissionButton).setOnClickListener { pulse(it); showPage(permissionPage); updatePermissionStates() }
+        findViewById<TextView>(R.id.homePremium).setOnClickListener { pulse(it); showPage(aboutPage) }
         refreshAll()
     }
 
