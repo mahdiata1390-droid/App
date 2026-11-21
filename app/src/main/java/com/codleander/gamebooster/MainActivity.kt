@@ -42,6 +42,7 @@ class MainActivity : Activity() {
     private lateinit var networkView: TextView
     private lateinit var pingView: TextView
     private lateinit var notificationState: TextView
+    private lateinit var writeSettingsState: TextView
     private var sessionStartedAt = 0L
     private var selectedProfile = Profile()
     private val uiHandler = Handler(Looper.getMainLooper())
@@ -72,6 +73,7 @@ class MainActivity : Activity() {
         networkView = findViewById(R.id.networkStatus)
         pingView = findViewById(R.id.pingStatus)
         notificationState = findViewById(R.id.notificationPermissionState)
+        writeSettingsState = findViewById(R.id.writeSettingsPermissionState)
         applyGlobalUiPolish()
         recoverStaleRuntimeIfNeeded()
         startLiveDashboard()
@@ -96,6 +98,7 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.usagePermission).setOnClickListener { pulse(it); feedback(false); openUsageSettings() }
         findViewById<Button>(R.id.overlayPermission).setOnClickListener { pulse(it); feedback(false); openOverlaySettings() }
         findViewById<Button>(R.id.notificationPermission).setOnClickListener { pulse(it); feedback(false); openNotificationPermission() }
+        findViewById<Button>(R.id.writeSettingsPermission).setOnClickListener { pulse(it); feedback(false); openWriteSettings() }
         refreshAll()
     }
 
@@ -163,9 +166,12 @@ class MainActivity : Activity() {
         val target = runtime.getString("target_package", null)
         val label = runtime.getString("target_label", target ?: "Unknown Game") ?: "Unknown Game"
         val activePlayMs = runtime.getLong("active_play_ms", 0L)
-        val recoveredDuration = activePlayMs.coerceAtLeast((now - start).coerceAtLeast(0L).coerceAtMost(2_000L))
+        val recoveredDuration = activePlayMs.coerceAtLeast(
+            (now - start).coerceAtLeast(0L).coerceAtMost(2_000L)
+        )
 
-        // Restore only values that this booster session actually changed.
+        var restored = true
+
         if (runtime.getBoolean("dnd_changed", false)) {
             val previous = runtime.getInt("previous_interruption_filter", -1)
             val expected = runtime.getInt(
@@ -173,43 +179,59 @@ class MainActivity : Activity() {
                 NotificationManager.INTERRUPTION_FILTER_PRIORITY
             )
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (previous >= 0 && nm.isNotificationPolicyAccessGranted &&
-                nm.currentInterruptionFilter == expected
-            ) {
-                runCatching { nm.setInterruptionFilter(previous) }
-            }
-        }
-
-        if (runtime.getBoolean("screen_timeout_changed", false) &&
-            Settings.System.canWrite(this)
-        ) {
-            val previous = runtime.getLong("previous_screen_timeout", -1L)
-            val current = runCatching {
-                Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
-            }.getOrNull()
-            val applied = runtime.getLong(
-                "applied_screen_timeout",
-                30L * 60L * 1000L
-            )
-            if (SessionGuards.shouldRestoreLong(true, previous, current, applied)) {
-                runCatching {
-                    Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, previous)
+            if (previous >= 0) {
+                if (!nm.isNotificationPolicyAccessGranted) {
+                    restored = false
+                } else if (nm.currentInterruptionFilter == expected) {
+                    val ok = runCatching {
+                        nm.setInterruptionFilter(previous)
+                        nm.currentInterruptionFilter == previous
+                    }.getOrDefault(false)
+                    restored = restored && ok
                 }
             }
         }
 
-        if (runtime.getBoolean("brightness_changed", false) &&
-            Settings.System.canWrite(this)
-        ) {
-            val previous = runtime.getInt("previous_brightness", -1)
-            val current = runCatching {
-                Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
-            }.getOrNull()
-            if (SessionGuards.shouldRestoreInt(true, previous, current, previous)) {
-                runCatching {
-                    Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, previous)
+        if (runtime.getBoolean("screen_timeout_changed", false)) {
+            if (!Settings.System.canWrite(this)) {
+                restored = false
+            } else {
+                val previous = runtime.getLong("previous_screen_timeout", -1L)
+                val current = runCatching {
+                    Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT)
+                }.getOrNull()
+                val applied = runtime.getLong("applied_screen_timeout", 30L * 60L * 1000L)
+                if (SessionGuards.shouldRestoreLong(true, previous, current, applied)) {
+                    val ok = runCatching {
+                        Settings.System.putLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, previous)
+                        Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT) == previous
+                    }.getOrDefault(false)
+                    restored = restored && ok
                 }
             }
+        }
+
+        if (runtime.getBoolean("brightness_changed", false)) {
+            if (!Settings.System.canWrite(this)) {
+                restored = false
+            } else {
+                val previous = runtime.getInt("previous_brightness", -1)
+                val current = runCatching {
+                    Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+                }.getOrNull()
+                if (SessionGuards.shouldRestoreInt(true, previous, current, previous)) {
+                    val ok = runCatching {
+                        Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, previous)
+                        Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS) == previous
+                    }.getOrDefault(false)
+                    restored = restored && ok
+                }
+            }
+        }
+
+        if (!restored) {
+            statusView.text = "RECOVERY PENDING • ENABLE REQUIRED ACCESS TO RESTORE SETTINGS"
+            return
         }
 
         if (!target.isNullOrBlank() && activePlayMs > 0L) {
@@ -316,8 +338,10 @@ class MainActivity : Activity() {
         val caps = cm.getNetworkCapabilities(n)
         val type = when {
             caps == null -> "OFFLINE"
+            !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) -> "NO INTERNET"
             caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WIFI"
             caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "MOBILE"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ETHERNET"
             else -> "ONLINE"
         }
         networkView.text = "NETWORK\n$type"
@@ -688,6 +712,13 @@ class MainActivity : Activity() {
         usageState.text = if (hasUsageAccess()) "GAME DETECTION • ENABLED" else "GAME DETECTION • NOT ENABLED"
         overlayState.text = if (Settings.canDrawOverlays(this)) "FLOATING BOOSTER • ENABLED" else "FLOATING BOOSTER • NOT ENABLED"
         notificationState.text = if (hasNotificationPermission()) "NOTIFICATIONS • ENABLED" else "NOTIFICATIONS • NOT ENABLED"
+        writeSettingsState.text = if (Settings.System.canWrite(this)) "SYSTEM SETTINGS • ENABLED" else "SYSTEM SETTINGS • NOT ENABLED"
+    }
+
+    private fun openWriteSettings() {
+        startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+            data = Uri.parse("package:$packageName")
+        })
     }
 
     private fun hasDndAccess(): Boolean {
