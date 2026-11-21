@@ -472,87 +472,89 @@ class MainActivity : Activity() {
     private fun loadGames() {
         Trace.beginSection("GameBooster.loadGames")
         try {
-        val pm = packageManager
-        val density = resources.displayMetrics.density
-        fun dp(value: Int): Int = (value * density).roundToInt()
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val apps = pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
-            .filter { it.activityInfo.packageName != packageName }
-            .filter {
-                val info = it.activityInfo.applicationInfo
-                info.category == ApplicationInfo.CATEGORY_GAME ||
-                    (info.flags and ApplicationInfo.FLAG_IS_GAME) != 0
-            }
-            .distinctBy { it.activityInfo.packageName }
-            .sortedBy { it.loadLabel(pm).toString().lowercase(Locale.ROOT) }
-
-        gamesContainer.removeAllViews()
-        apps.forEach { ri ->
-            val isGame = ri.activityInfo.applicationInfo.category == ApplicationInfo.CATEGORY_GAME
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(18), dp(12), dp(10), dp(12))
-                background = getDrawable(R.drawable.neo_card)
-                elevation = 6f
-            }
-            val icon = ImageView(this).apply {
-                setImageDrawable(ri.loadIcon(pm))
-                layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
-            }
-            val nameBox = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(12) }
-            }
-            val name = TextView(this).apply {
-                text = ri.loadLabel(pm)
-                textSize = 15f
-                setTextColor(Color.rgb(234, 248, 255))
-            }
-            val type = TextView(this).apply {
-                val launches = getSharedPreferences("game_profiles", MODE_PRIVATE).getInt("${ri.activityInfo.packageName}_launches", 0)
-                text = if (isGame) "GAME • READY • $launches BOOSTS" else "APP • LAUNCHABLE • $launches BOOSTS"
-                textSize = 10f
-                setTextColor(Color.rgb(127, 166, 196))
-            }
-            nameBox.addView(name); nameBox.addView(type)
-
-            row.setOnClickListener {
-                for (i in 0 until gamesContainer.childCount) {
-                    gamesContainer.getChildAt(i).background = getDrawable(R.drawable.neo_card)
+            val pm = packageManager
+            val density = resources.displayMetrics.density
+            fun dp(value: Int): Int = (value * density).roundToInt()
+            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            val apps = pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
+                .filter { it.activityInfo.packageName != packageName }
+                .filter {
+                    val info = it.activityInfo.applicationInfo
+                    info.category == ApplicationInfo.CATEGORY_GAME ||
+                        (info.flags and ApplicationInfo.FLAG_IS_GAME) != 0
                 }
-                row.background = getDrawable(R.drawable.neo_selected)
-                selectedPackage = ri.activityInfo.packageName
-                selectedLabel = ri.loadLabel(pm).toString()
-                selectedProfile = loadProfile(selectedPackage!!)
-                pulse(row)
-                playSound(tapSound, 1.12f, 0.7f)
-                statusView.text = "SELECTED • ${selectedLabel!!.uppercase(Locale.ROOT)} • READY TO BOOST"
-            }
+                .distinctBy { it.activityInfo.packageName }
+                .sortedBy { it.loadLabel(pm).toString().lowercase(Locale.ROOT) }
 
-            val profile = Button(this).apply {
-                text = "PROFILE"
-                setTextColor(Color.rgb(89, 216, 255)); background=getDrawable(R.drawable.neo_button); elevation=4f
-                setOnClickListener { openProfileEditor(ri.activityInfo.packageName, ri.loadLabel(pm).toString()) }
-            }
-            val launch = Button(this).apply {
-                text = "BOOST"
-                setTextColor(Color.rgb(89, 216, 255))
-                background = getDrawable(R.drawable.neo_button)
-                elevation = 4f
-                setOnClickListener {
-                    pulse(this); pulse(lightningIcon); feedback(true)
-                    startGameSession(ri.activityInfo.packageName, ri.loadLabel(pm).toString())
+            gamesContainer.removeAllViews()
+            apps.forEach { ri ->
+                val label = ri.loadLabel(pm).toString()
+                val card = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    setPadding(dp(10), dp(10), dp(10), dp(10))
+                    background = getDrawable(R.drawable.neo_card_strong)
+                    elevation = dp(4).toFloat()
+                    isClickable = true
+                    isFocusable = true
                 }
+                val icon = ImageView(this).apply {
+                    setImageDrawable(ri.loadIcon(pm))
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    layoutParams = LinearLayout.LayoutParams(dp(92), dp(92))
+                }
+                val name = TextView(this).apply {
+                    text = label
+                    textSize = 14f
+                    gravity = Gravity.CENTER
+                    maxLines = 2
+                    setTextColor(Color.rgb(234, 248, 255))
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(42))
+                }
+                val launches = getSharedPreferences("game_profiles", MODE_PRIVATE)
+                    .getInt("${ri.activityInfo.packageName}_launches", 0)
+                val meta = TextView(this).apply {
+                    text = if (launches > 0) "$launches BOOSTS" else "READY TO BOOST"
+                    textSize = 9f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.rgb(89, 216, 255))
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(22))
+                }
+                val launch = TextView(this).apply {
+                    text = "▶  BOOST"
+                    gravity = Gravity.CENTER
+                    textSize = 11f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    background = getDrawable(R.drawable.neo_button)
+                    layoutParams = LinearLayout.LayoutParams(dp(110), dp(38)).apply { topMargin = dp(4) }
+                    setOnClickListener {
+                        pulse(this)
+                        feedback(true)
+                        startGameSession(ri.activityInfo.packageName, label)
+                    }
+                }
+                card.addView(icon)
+                card.addView(name)
+                card.addView(meta)
+                card.addView(launch)
+                card.setOnClickListener {
+                    selectedPackage = ri.activityInfo.packageName
+                    selectedLabel = label
+                    selectedProfile = loadProfile(ri.activityInfo.packageName)
+                    pulse(card)
+                    playSound(tapSound, 1.12f, 0.7f)
+                    statusView.text = "SELECTED • ${label.uppercase(Locale.ROOT)} • READY TO BOOST"
+                }
+                val lp = GridLayout.LayoutParams().apply {
+                    width = 0
+                    height = dp(210)
+                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1, 1f)
+                    setMargins(dp(5), dp(5), dp(5), dp(8))
+                }
+                gamesContainer.addView(card, lp)
             }
-            row.addView(icon)
-            row.addView(nameBox)
-            row.addView(profile)
-            row.addView(launch)
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.bottomMargin = dp(12)
-            gamesContainer.addView(row, lp)
-        }
         } finally {
             Trace.endSection()
         }
