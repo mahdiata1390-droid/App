@@ -31,6 +31,7 @@ import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
@@ -89,6 +90,8 @@ class MainActivity : Activity() {
     private var sounds: SoundPool? = null
     private var tapSound = 0
     private var successSound = 0
+    private var boostSound = 0
+    private var errorSound = 0
 
     private val navPages = listOf(PAGE_HOME, PAGE_LIBRARY, PAGE_HISTORY, PAGE_SETTINGS)
     private val navIconIds = listOf(R.id.navHomeIcon, R.id.navGamesIcon, R.id.navHistoryIcon, R.id.navSettingsIcon)
@@ -170,12 +173,17 @@ class MainActivity : Activity() {
     // ---------------------------------------------------------------- navigation
 
     private fun bindNavigation() {
-        findViewById<View>(R.id.navHome).setOnClickListener { showPage(PAGE_HOME) }
-        findViewById<View>(R.id.navGames).setOnClickListener { showPage(PAGE_LIBRARY) }
-        findViewById<View>(R.id.navHistory).setOnClickListener { showPage(PAGE_HISTORY) }
-        findViewById<View>(R.id.navSettings).setOnClickListener { showPage(PAGE_SETTINGS) }
-        findViewById<View>(R.id.menuButton).setOnClickListener { showPage(PAGE_SETTINGS) }
-        findViewById<View>(R.id.crownButton).setOnClickListener { showPage(PAGE_ABOUT) }
+        val navHome = findViewById<View>(R.id.navHome)
+        val navGames = findViewById<View>(R.id.navGames)
+        val navHistory = findViewById<View>(R.id.navHistory)
+        val navSettings = findViewById<View>(R.id.navSettings)
+        navHome.setOnClickListener { tapFeedback(); showPage(PAGE_HOME) }
+        navGames.setOnClickListener { tapFeedback(); showPage(PAGE_LIBRARY) }
+        navHistory.setOnClickListener { tapFeedback(); showPage(PAGE_HISTORY) }
+        navSettings.setOnClickListener { tapFeedback(); showPage(PAGE_SETTINGS) }
+        findViewById<View>(R.id.menuButton).setOnClickListener { tapFeedback(); showPage(PAGE_SETTINGS) }
+        findViewById<View>(R.id.crownButton).setOnClickListener { tapFeedback(); showPage(PAGE_ABOUT) }
+        pressFeedback(navHome, navGames, navHistory, navSettings)
     }
 
     private fun showPage(page: String) {
@@ -190,7 +198,19 @@ class MainActivity : Activity() {
             PAGE_ABOUT to R.id.aboutPage
         )
         ids.forEach { (key, id) ->
-            findViewById<View>(id).visibility = if (key == page) View.VISIBLE else View.GONE
+            val pageView = findViewById<View>(id)
+            if (key == page) {
+                if (pageView.visibility == View.VISIBLE) return@forEach
+                pageView.animate().cancel()
+                pageView.visibility = View.VISIBLE
+                pageView.alpha = 0f
+                pageView.translationY = dp(12).toFloat()
+                pageView.animate().alpha(1f).translationY(0f).setDuration(230L)
+                    .setInterpolator(DecelerateInterpolator()).start()
+            } else if (pageView.visibility != View.GONE) {
+                pageView.animate().cancel()
+                pageView.visibility = View.GONE
+            }
         }
 
         val navVisible = navPages.contains(page)
@@ -220,21 +240,43 @@ class MainActivity : Activity() {
                 this,
                 if (selected) R.color.gb_accent_bright else R.color.gb_muted
             )
-            findViewById<ImageView>(navIconIds[index]).setColorFilter(color)
+            val icon = findViewById<ImageView>(navIconIds[index])
+            icon.setColorFilter(color)
             findViewById<TextView>(navLabelIds[index]).setTextColor(color)
+            icon.animate().cancel()
+            if (selected) {
+                icon.scaleX = 1f
+                icon.scaleY = 1f
+                icon.animate().scaleX(1.16f).scaleY(1.16f).setDuration(120L)
+                    .setInterpolator(DecelerateInterpolator())
+                    .withEndAction {
+                        icon.animate().scaleX(1f).scaleY(1f).setDuration(170L).start()
+                    }
+                    .start()
+            } else {
+                icon.scaleX = 1f
+                icon.scaleY = 1f
+            }
         }
     }
 
     // --------------------------------------------------------------------- home
 
     private fun bindHome() {
-        findViewById<View>(R.id.homeBoostButton).setOnClickListener {
+        val boostButton = findViewById<View>(R.id.homeBoostButton)
+        val chip = findViewById<View>(R.id.homeGameChip)
+        val stop = findViewById<View>(R.id.stopBoostButton)
+        boostButton.setOnClickListener {
             feedback(true)
             startBoost(selectedGame)
         }
-        findViewById<View>(R.id.homeLibrary).setOnClickListener { showPage(PAGE_LIBRARY) }
-        findViewById<View>(R.id.homeGameChip).setOnClickListener { showPage(PAGE_LIBRARY) }
-        findViewById<View>(R.id.stopBoostButton).setOnClickListener { stopActiveSession() }
+        findViewById<View>(R.id.homeLibrary).setOnClickListener {
+            tapFeedback()
+            showPage(PAGE_LIBRARY)
+        }
+        chip.setOnClickListener { tapFeedback(); showPage(PAGE_LIBRARY) }
+        stop.setOnClickListener { stopActiveSession() }
+        pressFeedback(boostButton, chip, stop)
     }
 
     private val statsTick = object : Runnable {
@@ -264,12 +306,12 @@ class MainActivity : Activity() {
         val memory = DeviceStats.memory(this)
         findViewById<TextView>(R.id.statRamValue).text =
             getString(R.string.percent_value, memory.usedPercent)
+        animateBar(findViewById(R.id.statRamBar), memory.usedPercent)
         findViewById<TextView>(R.id.statRamSub).text = getString(
             R.string.ram_usage,
             memory.usedBytes / 1073741824.0,
             memory.totalBytes / 1073741824.0
         )
-        findViewById<ProgressBar>(R.id.statRamBar).progress = memory.usedPercent
 
         val battery = DeviceStats.battery(this)
         if (battery.level >= 0) {
@@ -278,11 +320,11 @@ class MainActivity : Activity() {
             findViewById<TextView>(R.id.statBatterySub).text = getString(
                 if (battery.charging) R.string.charging else R.string.on_battery
             )
-            findViewById<ProgressBar>(R.id.statBatteryBar).progress = battery.level
+            animateBar(findViewById(R.id.statBatteryBar), battery.level)
         } else {
             findViewById<TextView>(R.id.statBatteryValue).text = getString(R.string.gain_none)
             findViewById<TextView>(R.id.statBatterySub).text = getString(R.string.not_available)
-            findViewById<ProgressBar>(R.id.statBatteryBar).progress = 0
+            animateBar(findViewById(R.id.statBatteryBar), 0)
         }
 
         val temperature = battery.temperatureC
@@ -290,11 +332,13 @@ class MainActivity : Activity() {
         if (temperature != null) {
             findViewById<TextView>(R.id.statTempValue).text =
                 getString(R.string.temp_celsius, temperature)
-            findViewById<ProgressBar>(R.id.statTempBar).progress =
+            animateBar(
+                findViewById(R.id.statTempBar),
                 (((temperature - 20f) / 45f) * 100f).toInt().coerceIn(0, 100)
+            )
         } else {
             findViewById<TextView>(R.id.statTempValue).text = getString(R.string.gain_none)
-            findViewById<ProgressBar>(R.id.statTempBar).progress = 0
+            animateBar(findViewById(R.id.statTempBar), 0)
         }
         findViewById<TextView>(R.id.statTempSub).text =
             getString(DeviceStats.thermalLabelRes(thermal))
@@ -315,12 +359,11 @@ class MainActivity : Activity() {
                 if (latency != null) {
                     findViewById<TextView>(R.id.statNetworkValue).text =
                         getString(R.string.ms_value, latency)
-                    findViewById<ProgressBar>(R.id.statNetworkBar).progress =
-                        latency.toInt().coerceIn(0, 200)
+                    animateBar(findViewById(R.id.statNetworkBar), latency.toInt().coerceIn(0, 200))
                 } else {
                     findViewById<TextView>(R.id.statNetworkValue).text =
                         getString(R.string.timeout)
-                    findViewById<ProgressBar>(R.id.statNetworkBar).progress = 0
+                    animateBar(findViewById(R.id.statNetworkBar), 0)
                 }
             }
         }.start()
@@ -389,11 +432,16 @@ class MainActivity : Activity() {
     // ------------------------------------------------------------------ library
 
     private fun bindLibrary() {
-        findViewById<View>(R.id.filterAll).setOnClickListener { setFilter(FILTER_ALL) }
-        findViewById<View>(R.id.filterPopular).setOnClickListener { setFilter(FILTER_POPULAR) }
-        findViewById<View>(R.id.filterInstalled).setOnClickListener { setFilter(FILTER_INSTALLED) }
+        val filterAll = findViewById<View>(R.id.filterAll)
+        val filterPopular = findViewById<View>(R.id.filterPopular)
+        val filterInstalled = findViewById<View>(R.id.filterInstalled)
+        filterAll.setOnClickListener { tapFeedback(); setFilter(FILTER_ALL) }
+        filterPopular.setOnClickListener { tapFeedback(); setFilter(FILTER_POPULAR) }
+        filterInstalled.setOnClickListener { tapFeedback(); setFilter(FILTER_INSTALLED) }
+        pressFeedback(filterAll, filterPopular, filterInstalled)
 
         findViewById<View>(R.id.gamesSearchToggle).setOnClickListener {
+            tapFeedback()
             val search = findViewById<EditText>(R.id.gamesSearch)
             if (search.visibility == View.VISIBLE) {
                 search.setText("")
@@ -538,6 +586,7 @@ class MainActivity : Activity() {
         card.addView(footer)
         card.setOnClickListener { onGameClicked(game) }
         plus.setOnClickListener { onGameClicked(game) }
+        pressFeedback(card)
         return card
     }
 
@@ -571,12 +620,17 @@ class MainActivity : Activity() {
     // ----------------------------------------------------------------- boosting
 
     private fun bindBoosting() {
-        findViewById<View>(R.id.boostBack).setOnClickListener { abortBoost() }
-        findViewById<View>(R.id.boostCancel).setOnClickListener { abortBoost() }
-        findViewById<View>(R.id.boostSettings).setOnClickListener {
+        val back = findViewById<View>(R.id.boostBack)
+        val cancel = findViewById<View>(R.id.boostCancel)
+        val settings = findViewById<View>(R.id.boostSettings)
+        back.setOnClickListener { tapFeedback(); abortBoost() }
+        cancel.setOnClickListener { tapFeedback(); abortBoost() }
+        settings.setOnClickListener {
+            tapFeedback()
             abortBoost()
             showPage(PAGE_SETTINGS)
         }
+        pressFeedback(back, cancel, settings)
     }
 
     private fun startBoost(game: GameInfo?) {
@@ -590,12 +644,17 @@ class MainActivity : Activity() {
         selectedGame = game ?: selectedGame
         showPage(PAGE_BOOSTING)
         feedback(true)
+        playSound(boostSound, 0.9f)
+        vibratePattern(0L, 26L, 60L, 40L)
 
         val ring = findViewById<BoostRingView>(R.id.boostRing)
+        ring.setActive(true)
         ring.setProgressNow(0f)
         ring.animateTo(1f, 3400L)
-        findViewById<TextView>(R.id.boostPercent).text = getString(R.string.boost_percent, 0)
-        findViewById<TextView>(R.id.boostStage).setText(R.string.optimizing_device)
+        val percent = findViewById<TextView>(R.id.boostPercent)
+        percent.tag = 0
+        percent.text = getString(R.string.boost_percent, 0)
+        setStageText(R.string.optimizing_device, instant = true)
         for (index in 0 until 4) setStepState(index, STEP_PENDING)
 
         val mode = Prefs.boostMode(this)
@@ -612,7 +671,7 @@ class MainActivity : Activity() {
                     ui.post {
                         if (!boostCancelled) {
                             setStepState(step, STEP_ACTIVE)
-                            findViewById<TextView>(R.id.boostStage).setText(stepTitleRes(step))
+                            setStageText(stepTitleRes(step))
                         }
                     }
                     when (step) {
@@ -626,8 +685,9 @@ class MainActivity : Activity() {
                     ui.post {
                         if (!boostCancelled) {
                             setStepState(step, STEP_DONE)
-                            findViewById<TextView>(R.id.boostPercent).text =
-                                getString(R.string.boost_percent, (step + 1) * 25)
+                            animateBoostPercent((step + 1) * 25)
+                            playSound(tapSound, 0.4f, 1.45f)
+                            vibrate(12L)
                         }
                     }
                 }
@@ -655,11 +715,26 @@ class MainActivity : Activity() {
                 dot.setBackgroundResource(R.drawable.bg_step_circle_done)
                 icon.setColorFilter(ContextCompat.getColor(this, R.color.gb_green))
                 text.setTextColor(ContextCompat.getColor(this, R.color.gb_text))
+                dot.animate().cancel()
+                dot.scaleX = 1f
+                dot.scaleY = 1f
+                icon.animate().cancel()
+                icon.scaleX = 0.55f
+                icon.scaleY = 0.55f
+                icon.animate().scaleX(1f).scaleY(1f).setDuration(240L)
+                    .setInterpolator(DecelerateInterpolator()).start()
             }
             STEP_ACTIVE -> {
                 dot.setBackgroundResource(R.drawable.bg_step_circle)
                 icon.setColorFilter(ContextCompat.getColor(this, R.color.gb_accent_bright))
                 text.setTextColor(ContextCompat.getColor(this, R.color.gb_accent_soft))
+                dot.animate().cancel()
+                dot.scaleX = 1.06f
+                dot.scaleY = 1.06f
+                dot.animate().scaleX(1.24f).scaleY(1.24f).setDuration(150L)
+                    .setInterpolator(DecelerateInterpolator())
+                    .withEndAction { dot.animate().scaleX(1f).scaleY(1f).setDuration(180L).start() }
+                    .start()
             }
             else -> {
                 dot.setBackgroundResource(R.drawable.bg_step_circle)
@@ -740,9 +815,11 @@ class MainActivity : Activity() {
     private fun finishBoost(game: GameInfo?, freedMb: Int, thermal: Int, startedAt: Long) {
         boosting = false
         for (index in 0 until 4) setStepState(index, STEP_DONE)
-        findViewById<BoostRingView>(R.id.boostRing).setProgressNow(1f)
-        findViewById<TextView>(R.id.boostPercent).text = getString(R.string.boost_percent, 100)
-        findViewById<TextView>(R.id.boostStage).text = getString(R.string.boost_done_title)
+        val boostRing = findViewById<BoostRingView>(R.id.boostRing)
+        boostRing.setProgressNow(1f)
+        boostRing.setActive(false)
+        animateBoostPercent(100)
+        setStageText(R.string.boost_done_title, instant = true)
 
         val finishedAt = System.currentTimeMillis()
         HistoryStore.add(
@@ -779,6 +856,7 @@ class MainActivity : Activity() {
         if (boosting) {
             boosting = false
             boostCancelled = true
+            findViewById<BoostRingView>(R.id.boostRing).setActive(false)
             restoreDeviceBoostDnd()
         }
         showPage(PAGE_HOME)
@@ -824,11 +902,13 @@ class MainActivity : Activity() {
             )
             stop.visibility = View.VISIBLE
             ring.setProgressNow(1f)
+            ring.setActive(true)
         } else {
             title.setText(R.string.boost)
             hint.setText(R.string.tap_to_boost)
             stop.visibility = View.GONE
             ring.setProgressNow(0f)
+            ring.setActive(false)
         }
     }
 
@@ -893,12 +973,18 @@ class MainActivity : Activity() {
     // ------------------------------------------------------------------ settings
 
     private fun bindSettings() {
-        findViewById<View>(R.id.profileCard).setOnClickListener { editProfileName() }
+        val profile = findViewById<View>(R.id.profileCard)
+        val boostMode = findViewById<View>(R.id.rowBoostMode)
+        val appearance = findViewById<View>(R.id.rowAppearance)
+        val language = findViewById<View>(R.id.rowLanguage)
+        val permissions = findViewById<View>(R.id.rowPermissions)
+        profile.setOnClickListener { tapFeedback(); editProfileName() }
         syncProfileName()
-        findViewById<View>(R.id.rowBoostMode).setOnClickListener { chooseBoostMode() }
-        findViewById<View>(R.id.rowAppearance).setOnClickListener { chooseAppearance() }
-        findViewById<View>(R.id.rowLanguage).setOnClickListener { chooseLanguage() }
-        findViewById<View>(R.id.rowPermissions).setOnClickListener { showPage(PAGE_PERMISSIONS) }
+        boostMode.setOnClickListener { tapFeedback(); chooseBoostMode() }
+        appearance.setOnClickListener { tapFeedback(); chooseAppearance() }
+        language.setOnClickListener { tapFeedback(); chooseLanguage() }
+        permissions.setOnClickListener { tapFeedback(); showPage(PAGE_PERMISSIONS) }
+        pressFeedback(profile, boostMode, appearance, language, permissions)
 
         val autoBoost = findViewById<Switch>(R.id.autoBoostSwitch)
         autoBoost.setOnCheckedChangeListener { _, checked ->
@@ -951,6 +1037,7 @@ class MainActivity : Activity() {
             .setPositiveButton(R.string.save) { _, _ ->
                 Prefs.setDisplayName(this, input.text.toString())
                 syncProfileName()
+                tapFeedback()
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
@@ -1042,15 +1129,21 @@ class MainActivity : Activity() {
     // --------------------------------------------------------------- permissions
 
     private fun bindPermissions() {
-        findViewById<View>(R.id.permissionsBack).setOnClickListener { showPage(PAGE_SETTINGS) }
-        findViewById<View>(R.id.permissionsDone).setOnClickListener { showPage(PAGE_HOME) }
-        findViewById<View>(R.id.permissionUsageRow).setOnClickListener { openUsageSettings() }
-        findViewById<View>(R.id.permissionNotificationRow).setOnClickListener {
-            requestNotificationPermission()
-        }
-        findViewById<View>(R.id.permissionBatteryRow).setOnClickListener { requestBatteryExemption() }
-        findViewById<View>(R.id.permissionOverlayRow).setOnClickListener { openOverlaySettings() }
-        findViewById<View>(R.id.permissionSettingsRow).setOnClickListener { openWriteSettings() }
+        val back = findViewById<View>(R.id.permissionsBack)
+        val done = findViewById<View>(R.id.permissionsDone)
+        val usage = findViewById<View>(R.id.permissionUsageRow)
+        val notifications = findViewById<View>(R.id.permissionNotificationRow)
+        val battery = findViewById<View>(R.id.permissionBatteryRow)
+        val overlay = findViewById<View>(R.id.permissionOverlayRow)
+        val systemSettings = findViewById<View>(R.id.permissionSettingsRow)
+        back.setOnClickListener { tapFeedback(); showPage(PAGE_SETTINGS) }
+        done.setOnClickListener { tapFeedback(); showPage(PAGE_HOME) }
+        usage.setOnClickListener { tapFeedback(); openUsageSettings() }
+        notifications.setOnClickListener { tapFeedback(); requestNotificationPermission() }
+        battery.setOnClickListener { tapFeedback(); requestBatteryExemption() }
+        overlay.setOnClickListener { tapFeedback(); openOverlaySettings() }
+        systemSettings.setOnClickListener { tapFeedback(); openWriteSettings() }
+        pressFeedback(back, done, usage, notifications, battery, overlay, systemSettings)
     }
 
     private fun refreshPermissions() {
@@ -1190,9 +1283,13 @@ class MainActivity : Activity() {
     // ------------------------------------------------------------------ history
 
     private fun bindHistory() {
-        findViewById<View>(R.id.historyRangeDay).setOnClickListener { setHistoryRange(1) }
-        findViewById<View>(R.id.historyRangeWeek).setOnClickListener { setHistoryRange(7) }
-        findViewById<View>(R.id.historyRangeMonth).setOnClickListener { setHistoryRange(30) }
+        val day = findViewById<View>(R.id.historyRangeDay)
+        val week = findViewById<View>(R.id.historyRangeWeek)
+        val month = findViewById<View>(R.id.historyRangeMonth)
+        day.setOnClickListener { tapFeedback(); setHistoryRange(1) }
+        week.setOnClickListener { tapFeedback(); setHistoryRange(7) }
+        month.setOnClickListener { tapFeedback(); setHistoryRange(30) }
+        pressFeedback(day, week, month)
     }
 
     private fun setHistoryRange(days: Int) {
@@ -1401,15 +1498,85 @@ class MainActivity : Activity() {
 
     private fun initSounds() {
         sounds = runCatching {
-            SoundPool.Builder().setMaxStreams(2).build().also { pool ->
+            SoundPool.Builder().setMaxStreams(4).build().also { pool ->
                 tapSound = pool.load(this, R.raw.sfx_tap, 1)
                 successSound = pool.load(this, R.raw.sfx_success, 1)
+                boostSound = pool.load(this, R.raw.sfx_boost, 1)
+                errorSound = pool.load(this, R.raw.sfx_error, 1)
             }
         }.getOrNull()
     }
 
-    private fun playSound(id: Int, volume: Float = 0.85f) {
-        if (id != 0) sounds?.play(id, volume, volume, 1, 0, 1f)
+    private fun playSound(id: Int, volume: Float = 0.85f, rate: Float = 1f) {
+        if (id != 0) sounds?.play(id, volume, volume, 1, 0, rate.coerceIn(0.5f, 2f))
+    }
+
+    private fun tapFeedback() {
+        playSound(tapSound, 0.5f)
+        vibrate(9L)
+    }
+
+    private fun pressFeedback(vararg views: View) {
+        views.forEach { view ->
+            view.setOnTouchListener { v, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN ->
+                        v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(90L).start()
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                        v.animate().scaleX(1f).scaleY(1f).setDuration(160L).start()
+                }
+                false
+            }
+        }
+    }
+
+    private fun animateBar(barView: View, value: Int) {
+        val bar = barView as? ProgressBar ?: return
+        val target = value.coerceIn(0, bar.max)
+        if (bar.progress == target) return
+        (bar.tag as? ValueAnimator)?.cancel()
+        val animation = ValueAnimator.ofInt(bar.progress, target).apply {
+            duration = 420L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { bar.progress = it.animatedValue as Int }
+        }
+        bar.tag = animation
+        animation.start()
+    }
+
+    private fun animateBoostPercent(to: Int) {
+        val view = findViewById<TextView>(R.id.boostPercent)
+        val from = (view.tag as? Int) ?: 0
+        if (from == to) return
+        view.tag = to
+        ValueAnimator.ofInt(from, to).apply {
+            duration = 540L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { animator ->
+                view.text = getString(R.string.boost_percent, animator.animatedValue as Int)
+            }
+            start()
+        }
+    }
+
+    private fun setStageText(resId: Int, instant: Boolean = false) {
+        val stage = findViewById<TextView>(R.id.boostStage)
+        if (instant) {
+            stage.animate().cancel()
+            stage.alpha = 1f
+            stage.translationY = 0f
+            stage.setText(resId)
+            return
+        }
+        if (stage.text.toString() == getString(resId)) return
+        stage.animate().cancel()
+        stage.animate().alpha(0f).translationY(-dp(4).toFloat()).setDuration(110L)
+            .withEndAction {
+                stage.setText(resId)
+                stage.translationY = dp(4).toFloat()
+                stage.animate().alpha(1f).translationY(0f).setDuration(180L).start()
+            }
+            .start()
     }
 
     private fun feedback(strong: Boolean) {
@@ -1419,7 +1586,7 @@ class MainActivity : Activity() {
 
     private fun successFeedback() {
         playSound(successSound, 0.95f)
-        vibrate(45L)
+        vibratePattern(0L, 30L, 50L, 22L, 40L, 55L)
     }
 
     private fun vibrate(duration: Long) {
@@ -1432,9 +1599,37 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun vibratePattern(vararg timings: Long) {
+        val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+        if (!vibrator.hasVibrator()) return
+        if (Build.VERSION.SDK_INT >= 26) {
+            vibrator.vibrate(
+                VibrationEffect.createWaveform(timings, -1)
+            )
+        } else {
+            @Suppress("DEPRECATION") vibrator.vibrate(timings, -1)
+        }
+    }
+
     private fun startSplash() {
         val splash = findViewById<View>(R.id.splashPage)
         val bar = findViewById<ProgressBar>(R.id.splashProgress)
+
+        val logo = findViewById<View>(R.id.splashLogo)
+        logo.alpha = 0f
+        logo.scaleX = 0.86f
+        logo.scaleY = 0.86f
+        logo.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(620L)
+            .setInterpolator(DecelerateInterpolator()).start()
+        val game = findViewById<View>(R.id.splashGame)
+        val brand = findViewById<View>(R.id.splashBooster)
+        val tagline = findViewById<View>(R.id.splashTagline)
+        listOf(game to 140L, brand to 240L, tagline to 340L).forEach { (view, delay) ->
+            view.alpha = 0f
+            view.translationY = dp(14).toFloat()
+            view.animate().alpha(1f).translationY(0f).setStartDelay(delay)
+                .setDuration(520L).setInterpolator(DecelerateInterpolator()).start()
+        }
         val animator = ValueAnimator.ofInt(0, 100)
         animator.duration = 1500L
         animator.interpolator = DecelerateInterpolator()

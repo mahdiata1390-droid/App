@@ -1,5 +1,6 @@
 package com.codleander.gamebooster
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.LinearGradient
@@ -10,6 +11,7 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import java.util.Locale
 import kotlin.math.max
 
@@ -21,6 +23,8 @@ class HistoryChartView @JvmOverloads constructor(
     private val density = resources.displayMetrics.density
     private var values: FloatArray = FloatArray(0)
     private var labels: List<String> = emptyList()
+    private var reveal = 1f
+    private var revealAnimator: ValueAnimator? = null
 
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0x2A2F8BFF
@@ -48,7 +52,16 @@ class HistoryChartView @JvmOverloads constructor(
     fun setData(values: FloatArray, labels: List<String>) {
         this.values = values
         this.labels = labels
-        invalidate()
+        revealAnimator?.cancel()
+        revealAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 620L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener {
+                reveal = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -76,7 +89,7 @@ class HistoryChartView @JvmOverloads constructor(
         val points = values.mapIndexed { index, value ->
             PointF(
                 left + stepX * index,
-                bottom - plotHeight * (value / maxValue).coerceIn(0f, 1f)
+                bottom - plotHeight * ((value * reveal) / maxValue).coerceIn(0f, 1f)
             )
         }
 
@@ -109,8 +122,10 @@ class HistoryChartView @JvmOverloads constructor(
         canvas.drawPath(line, glowPaint)
         canvas.drawPath(line, linePaint)
 
-        dotPaint.color = 0xFFFFFFFF.toInt()
-        canvas.drawCircle(points.last().x, points.last().y, 3f * density, dotPaint)
+        if (reveal > 0.98f) {
+            dotPaint.color = 0xFFFFFFFF.toInt()
+            canvas.drawCircle(points.last().x, points.last().y, 3f * density, dotPaint)
+        }
 
         axisPaint.textAlign = Paint.Align.CENTER
         val every = (values.size / 6).coerceAtLeast(1)

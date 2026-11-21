@@ -25,6 +25,7 @@
         android:paddingEnd="32dp">
 
         <FrameLayout
+            android:id="@+id/splashLogo"
             android:layout_width="190dp"
             android:layout_height="190dp">
 
@@ -43,6 +44,7 @@
         </FrameLayout>
 
         <TextView
+            android:id="@+id/splashGame"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
@@ -53,6 +55,7 @@
             android:textSize="34sp" />
 
         <TextView
+            android:id="@+id/splashBooster"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="sans-serif-black"
@@ -66,6 +69,7 @@
             android:textSize="42sp" />
 
         <TextView
+            android:id="@+id/splashTagline"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
