@@ -118,7 +118,10 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.endBoost).setOnClickListener { pulse(it); stopService(Intent(this, BoosterService::class.java)); showPage(homePage); showLastSessionOrReady() }
         findViewById<Button>(R.id.permissionButton).setOnClickListener { pulse(it); showPage(permissionPage); updatePermissionStates() }
         findViewById<TextView>(R.id.homePremium).setOnClickListener { pulse(it); showPage(aboutPage) }
-        refreshAll()
+        runCatching { refreshAll() }.onFailure {
+            statusView.text = "SYSTEM READY • SELECT A GAME"
+            android.util.Log.e("GameBooster", "Initial refresh failed", it)
+        }
         findViewById<View>(R.id.splashPage).postDelayed({ findViewById<View>(R.id.splashPage).animate().alpha(0f).setDuration(280L).withEndAction { findViewById<View>(R.id.splashPage).visibility = View.GONE }.start() }, 1100L)
     }
 
@@ -391,10 +394,24 @@ class MainActivity : Activity() {
     }
 
     private fun refreshAll() {
-        updateStats()
-        loadGames()
-        updatePermissionStates()
-        showHistorySummary()
+        runCatching { updateStats() }
+            .onFailure { android.util.Log.e("GameBooster", "updateStats failed", it) }
+        runCatching { loadGames() }
+            .onFailure {
+                android.util.Log.e("GameBooster", "loadGames failed", it)
+                gamesContainer.removeAllViews()
+                val error = TextView(this).apply {
+                    text = "NO GAMES FOUND\nOpen a game once, then refresh."
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.rgb(127, 166, 196))
+                    setPadding(24, 40, 24, 40)
+                }
+                gamesContainer.addView(error)
+            }
+        runCatching { updatePermissionStates() }
+            .onFailure { android.util.Log.e("GameBooster", "permission state update failed", it) }
+        runCatching { showHistorySummary() }
+            .onFailure { android.util.Log.e("GameBooster", "history summary failed", it) }
     }
 
     private fun loadRawSound(pool: SoundPool, name: String): Int {
