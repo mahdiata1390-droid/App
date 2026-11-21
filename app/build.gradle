@@ -11,8 +11,8 @@ android {
         applicationId 'com.codleander.gamebooster'
         minSdk 26
         targetSdk 35
-        versionCode 101
-        versionName '1.0.0'
+        versionCode 200
+        versionName '2.0.0'
     }
 
     signingConfigs {
@@ -22,6 +22,10 @@ android {
             keyAlias "gamebooster"
             keyPassword "GB-Release-2026!StormKey"
         }
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {

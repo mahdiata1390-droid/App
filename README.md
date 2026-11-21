@@ -3,8 +3,8 @@
 Production Android Game Booster for supported Android devices.
 
 ## Release
-- Version: 1.0.0
-- Build: 101
+- Version: 2.0.0
+- Build: 200
 - Application ID: com.codleander.gamebooster
 - Min SDK: 26
 - Target SDK: 35

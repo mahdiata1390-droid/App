@@ -103,7 +103,7 @@ class BoosterService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        val notification = buildNotification("Game session monitor ready")
+        val notification = buildNotification(getString(R.string.notif_ready))
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(
                 NOTIFICATION_ID,
@@ -699,10 +699,10 @@ class BoosterService : Service() {
         if (Build.VERSION.SDK_INT >= 26) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Game Booster Session",
+                getString(R.string.notif_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             )
-            channel.description = "Shows when the Game Booster session is active."
+            channel.description = getString(R.string.notif_session_active)
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
                 .createNotificationChannel(channel)
         }
@@ -726,7 +726,7 @@ class BoosterService : Service() {
             .setContentIntent(pending)
             .addAction(Notification.Action.Builder(
                 Icon.createWithResource(this, R.drawable.ic_lightning),
-                "STOP",
+                getString(R.string.notif_stop),
                 PendingIntent.getService(
                     this,
                     1,

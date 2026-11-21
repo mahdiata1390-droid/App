@@ -1,9 +1,9 @@
-# Game Booster 1.0.0 — Release Checklist
+# Game Booster 2.0.0 — Release Checklist
 
 ## Build
 - Release variant: `assembleRelease`
 - Application ID: `com.codleander.gamebooster`
-- Version: `1.0.0 (100)`
+- Version: `2.0.0 (200)`
 - Target SDK: 35
 - Min SDK: 26
 

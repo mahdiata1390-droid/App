@@ -2,10 +2,15 @@ package com.codleander.gamebooster
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PointF
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
+import java.util.Locale
 import kotlin.math.max
 
 class HistoryChartView @JvmOverloads constructor(
@@ -13,17 +18,36 @@ class HistoryChartView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
-    private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var values: List<Pair<String, Long>> = emptyList()
+    private val density = resources.displayMetrics.density
+    private var values: FloatArray = FloatArray(0)
+    private var labels: List<String> = emptyList()
 
-    init {
-        labelPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        labelPaint.textSize = 10f * resources.displayMetrics.scaledDensity
+    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0x2A2F8BFF
+        strokeWidth = 1f * density
+    }
+    private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF7EA3C4.toInt()
+        textSize = 9f * resources.displayMetrics.scaledDensity
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        textAlign = Paint.Align.RIGHT
+    }
+    private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2.4f * density
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        color = 0xFF8FE3FF.toInt()
+    }
+    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFFFFFFF.toInt()
     }
 
-    fun setData(v: List<Pair<String, Long>>) {
-        values = v.take(8)
+    fun setData(values: FloatArray, labels: List<String>) {
+        this.values = values
+        this.labels = labels
         invalidate()
     }
 
@@ -31,36 +55,74 @@ class HistoryChartView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (values.isEmpty() || width <= 0 || height <= 0) return
 
-        val maxValue = values.maxOfOrNull { it.second }?.coerceAtLeast(1L) ?: 1L
-        val density = resources.displayMetrics.density
-        val gap = 8f * density
-        val labelHeight = 22f * density
-        val availableWidth = width.toFloat() - gap * (values.size + 1)
-        val barWidth = max(18f * density, availableWidth / values.size)
-        val bottom = height.toFloat() - labelHeight
-        val topLimit = 12f * density
-        val maxBarHeight = (bottom - topLimit).coerceAtLeast(8f * density)
+        val left = 36f * density
+        val right = width - 10f * density
+        val top = 16f * density
+        val bottom = height - 20f * density
+        val plotWidth = (right - left).coerceAtLeast(1f)
+        val plotHeight = (bottom - top).coerceAtLeast(1f)
 
-        barPaint.style = Paint.Style.FILL
-        barPaint.color = 0xFF19B5FF.toInt()
+        val maxValue = max(values.maxOrNull() ?: 0f, 1f)
 
-        labelPaint.color = 0xFF7FA6C4.toInt()
-        labelPaint.textAlign = Paint.Align.CENTER
+        for (i in 0..4) {
+            val y = bottom - plotHeight * i / 4f
+            gridPaint.color = if (i == 0) 0x552F8BFF else 0x2A2F8BFF
+            canvas.drawLine(left, y, right, y, gridPaint)
+            axisPaint.textAlign = Paint.Align.RIGHT
+            canvas.drawText(formatValue(maxValue * i / 4f), left - 8f * density, y + 3f * density, axisPaint)
+        }
 
-        values.forEachIndexed { index, entry ->
-            val ratio = (entry.second.toFloat() / maxValue.toFloat()).coerceIn(0f, 1f)
-            val left = gap + index * (barWidth + gap)
-            val right = left + barWidth
-            val top = bottom - maxBarHeight * ratio
-            canvas.drawRoundRect(left, top, right, bottom, 8f * density, 8f * density, barPaint)
-
-            val label = entry.first.take(9)
-            canvas.drawText(
-                label,
-                (left + right) / 2f,
-                height.toFloat() - 6f * density,
-                labelPaint
+        val stepX = plotWidth / (values.size - 1).coerceAtLeast(1)
+        val points = values.mapIndexed { index, value ->
+            PointF(
+                left + stepX * index,
+                bottom - plotHeight * (value / maxValue).coerceIn(0f, 1f)
             )
         }
+
+        val line = Path().apply {
+            moveTo(points[0].x, points[0].y)
+            for (i in 1 until points.size) {
+                val previous = points[i - 1]
+                val current = points[i]
+                val midX = (previous.x + current.x) / 2f
+                cubicTo(midX, previous.y, midX, current.y, current.x, current.y)
+            }
+        }
+
+        val area = Path(line).apply {
+            lineTo(points.last().x, bottom)
+            lineTo(points.first().x, bottom)
+            close()
+        }
+        fillPaint.shader = LinearGradient(
+            0f, top, 0f, bottom,
+            intArrayOf(0x802F8BFF.toInt(), 0x0A2F8BFF),
+            null,
+            Shader.TileMode.CLAMP
+        )
+        canvas.drawPath(area, fillPaint)
+
+        glowPaint.set(linePaint)
+        glowPaint.strokeWidth = 9f * density
+        glowPaint.alpha = 55
+        canvas.drawPath(line, glowPaint)
+        canvas.drawPath(line, linePaint)
+
+        dotPaint.color = 0xFFFFFFFF.toInt()
+        canvas.drawCircle(points.last().x, points.last().y, 3f * density, dotPaint)
+
+        axisPaint.textAlign = Paint.Align.CENTER
+        val every = (values.size / 6).coerceAtLeast(1)
+        labels.forEachIndexed { index, label ->
+            if (index % every == 0 || index == labels.lastIndex) {
+                val x = points.getOrNull(index)?.x ?: return@forEachIndexed
+                canvas.drawText(label, x.coerceIn(left, right), height - 4f * density, axisPaint)
+            }
+        }
     }
+
+    private fun formatValue(minutes: Float): String =
+        if (minutes >= 60f) String.format(Locale.US, "%.1fh", minutes / 60f)
+        else String.format(Locale.US, "%dm", minutes.toInt())
 }

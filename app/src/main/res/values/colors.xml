@@ -1,11 +1,24 @@
 <resources>
-    <color name="gb_background">#07111F</color>
-    <color name="gb_surface">#0D1B2E</color>
-    <color name="gb_surface_dark">#06101D</color>
-    <color name="gb_surface_light">#183250</color>
-    <color name="gb_accent">#19B5FF</color>
+    <color name="gb_background">#040A14</color>
+    <color name="gb_background_amoled">#000000</color>
+    <color name="gb_surface">#0A192B</color>
+    <color name="gb_surface_dark">#061020</color>
+    <color name="gb_surface_light">#16304E</color>
+    <color name="gb_stroke">#1B4A77</color>
+    <color name="gb_accent">#2F8BFF</color>
     <color name="gb_accent_bright">#59D8FF</color>
-    <color name="gb_electric">#2F7BFF</color>
-    <color name="gb_text">#EAF8FF</color>
-    <color name="gb_muted">#7FA6C4</color>
+    <color name="gb_accent_soft">#8FD6FF</color>
+    <color name="gb_text">#EAF6FF</color>
+    <color name="gb_muted">#7EA3C4</color>
+    <color name="gb_gold">#FFD35C</color>
+    <color name="gb_green">#3BE38A</color>
+    <color name="gb_red">#FF5C7A</color>
+    <color name="gb_card_top">#0E2440</color>
+    <color name="gb_card_bottom">#061020</color>
+    <color name="gb_nav_top">#08182B</color>
+    <color name="gb_scrim">#B3000000</color>
+    <color name="gb_ring_track">#10314F</color>
+    <color name="gb_ring_glow">#382F8BFF</color>
+    <color name="gb_ring_dash">#5C2A4E74</color>
+    <color name="gb_step_pending">#4A6E8C</color>
 </resources>
