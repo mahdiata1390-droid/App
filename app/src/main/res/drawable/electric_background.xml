@@ -1,7 +1,19 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item><shape><solid android:color="#020813"/></shape></item>
-    <item android:top="80dp" android:bottom="80dp">
-        <shape><gradient android:type="radial" android:gradientRadius="310dp" android:centerX="50%" android:centerY="42%" android:startColor="#092B68" android:centerColor="#061A3B" android:endColor="#020813"/></shape>
+    <item>
+        <shape>
+            <solid android:color="#020813"/>
+        </shape>
     </item>
-    <item><drawable android:drawable="@drawable/electric_lightning"/></item>
+    <item android:top="70dp" android:bottom="70dp">
+        <shape>
+            <gradient
+                android:type="radial"
+                android:gradientRadius="360dp"
+                android:centerX="50%"
+                android:centerY="45%"
+                android:startColor="#0B3B8F"
+                android:centerColor="#061F4D"
+                android:endColor="#020813"/>
+        </shape>
+    </item>
 </layer-list>
