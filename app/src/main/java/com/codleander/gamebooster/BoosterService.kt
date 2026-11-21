@@ -309,9 +309,11 @@ class BoosterService : Service() {
         if (latestTime > 0L) {
             lastForegroundPackage = latestPkg
             lastForegroundEventAt = latestTime
-        } else if (lastForegroundEventAt > 0L && end - lastForegroundEventAt > 20_000L) {
-            lastForegroundPackage = null
         }
+
+        // UsageStats reports foreground transitions, not a heartbeat while an
+        // activity remains visible. Do not expire the last known package just
+        // because no new transition event arrived for 20 seconds.
         return lastForegroundPackage
     }
 
