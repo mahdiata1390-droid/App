@@ -14,6 +14,7 @@ import android.view.*
 import android.widget.TextView
 import android.widget.LinearLayout
 import android.widget.Button
+import android.widget.Toast
 import android.graphics.drawable.GradientDrawable
 import java.util.Locale
 import org.json.JSONArray
@@ -25,6 +26,7 @@ class BoosterService : Service() {
         const val EXTRA_PACKAGE = "target_package"
         const val ACTION_START = "com.codleander.gamebooster.START"
         const val ACTION_STOP = "com.codleander.gamebooster.STOP"
+        const val ACTION_REFRESH_HUD = "com.codleander.gamebooster.REFRESH_HUD"
         private const val CHANNEL_ID = "booster_session"
         private const val NOTIFICATION_ID = 1001
         private const val POLL_MS = 2000L
@@ -34,8 +36,9 @@ class BoosterService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var targetPackage: String? = null
-    private var bubble: View? = null
-    private var windowManager: WindowManager? = null
+    private var hud: BoosterHud? = null
+    private var fpsMonitor: FpsMonitor? = null
+    private var lastFps = 0f
     private var sessionStartedAt = 0L
     private var peakThermalStatus = PowerManager.THERMAL_STATUS_NONE
     private var sessionStartBrightness = -1f
@@ -52,7 +55,6 @@ class BoosterService : Service() {
     private var profileAwake = true
     private var profileBrightness = false
     private var profileHud = true
-    private var overlayPanel: LinearLayout? = null
     private var sessionPausedAt = 0L
     private var dndChangedByService = false
     private var dndChangedByUser = false
@@ -88,9 +90,8 @@ class BoosterService : Service() {
             enforceBrightnessLock()
             persistRuntimeHeartbeat()
 
-            if (foreground == target) {
-                updateBubble(true)
-            } else if (SessionGuards.shouldStopForWrongForeground(
+            hud?.setLive(foreground == target)
+            if (foreground != target && SessionGuards.shouldStopForWrongForeground(
                     foreground, target, packageName, now - sessionStartedAt, FOREGROUND_MISSING_GRACE_MS
                 )) {
                 stopSelf()
@@ -118,6 +119,13 @@ class BoosterService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> stopSelf()
+            ACTION_REFRESH_HUD -> {
+                if (sessionStartedAt == 0L) {
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                hud?.setFpsVisible(Prefs.fpsHud(this))
+            }
             else -> {
                 val requestedPackage = intent?.getStringExtra(EXTRA_PACKAGE) ?: targetPackage
                 if (requestedPackage.isNullOrBlank()) {
@@ -244,8 +252,8 @@ class BoosterService : Service() {
                 }
 
                 runtimeEditor.apply()
-                if (targetPackage != null && Settings.canDrawOverlays(this) && profileHud) {
-                    runCatching { showBubble() }
+                if (targetPackage != null && profileHud) {
+                    runCatching { showHud() }
                 }
                 handler.removeCallbacks(poller)
                 handler.post(poller)
@@ -256,8 +264,7 @@ class BoosterService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        removeToolbox()
-        removeBubble()
+        hideHud()
         persistRuntimeHeartbeat()
         saveSessionHistory()
         val dndRestored = restoreDnd()
@@ -337,147 +344,78 @@ class BoosterService : Service() {
         return lastForegroundPackage
     }
 
-    private fun showBubble() {
-        if (bubble != null || !Settings.canDrawOverlays(this)) return
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-
-        val tv = TextView(this).apply {
-            text = "⚡\n00:00"
-            textSize = 22f
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            setBackgroundResource(R.drawable.neo_bubble)
-            elevation = 12f
-            contentDescription = "Game Booster floating control"
-            setOnClickListener {
-                openToolbox()
-            }
-            setOnLongClickListener {
-                stopSelf()
-                true
-            }
-        }
-
-        val density = resources.displayMetrics.density
-        val size = (56 * density).toInt()
-        val params = WindowManager.LayoutParams(
-            size,
-            size,
-            if (Build.VERSION.SDK_INT >= 26)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.END
-            x = (16 * density).toInt()
-            y = (180 * density).toInt()
-        }
-
-        tv.setOnTouchListener(object : View.OnTouchListener {
-            private var downX = 0f
-            private var downY = 0f
-            private var startX = 0
-            private var startY = 0
-            private var moved = false
-
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        downX = event.rawX
-                        downY = event.rawY
-                        startX = params.x
-                        startY = params.y
-                        moved = false
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        val dx = (event.rawX - downX).toInt()
-                        val dy = (event.rawY - downY).toInt()
-                        if (kotlin.math.abs(dx) > 8 || kotlin.math.abs(dy) > 8) moved = true
-                        if (moved) {
-                            params.x = startX - dx
-                            params.y = startY + dy
-                            windowManager?.updateViewLayout(v, params)
-                            return true
-                        }
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        return moved
-                    }
-                }
-                return false
-            }
-        })
-
-        bubble = tv
-        try {
-            windowManager?.addView(tv, params)
-        } catch (_: SecurityException) {
-            bubble = null
-        } catch (_: WindowManager.BadTokenException) {
-            bubble = null
-        }
-    }
-
-    private fun openToolbox() {
-        if (overlayPanel != null) { removeToolbox(); return }
-        val wm=windowManager ?: return
-        val panel=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(18,18,18,18); background=getDrawable(R.drawable.neo_card); elevation=20f }
-        val title=TextView(this).apply { text="⚡  GAME TOOLBOX"; textSize=16f; setTextColor(Color.WHITE); setPadding(0,0,0,12) }
-        val timer=TextView(this).apply { textSize=14f; setTextColor(0xFF59D8FF.toInt()) }
-        val dnd=Button(this).apply {
-            text = dndButtonLabel()
-            setOnClickListener {
-                toggleDnd()
-                text = dndButtonLabel()
-            }
-        }
-        val stop=Button(this).apply { text="END SESSION"; setOnClickListener { stopSelf() } }
-        val close=Button(this).apply { text="CLOSE"; setOnClickListener { removeToolbox() } }
-        panel.addView(title); panel.addView(timer); panel.addView(dnd); panel.addView(stop); panel.addView(close)
-        val density=resources.displayMetrics.density
-        val lp=WindowManager.LayoutParams((230*density).toInt(), WindowManager.LayoutParams.WRAP_CONTENT, if(Build.VERSION.SDK_INT>=26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT).apply { gravity=Gravity.TOP or Gravity.END; x=(14*density).toInt(); y=(250*density).toInt() }
-        overlayPanel=panel
-        try {
-            wm.addView(panel,lp)
-        } catch (_: SecurityException) {
-            overlayPanel = null
-            return
-        } catch (_: WindowManager.BadTokenException) {
-            overlayPanel = null
+    private fun showHud() {
+        if (!Settings.canDrawOverlays(this)) return
+        if (hud != null) {
+            hud?.setFpsVisible(Prefs.fpsHud(this))
             return
         }
-        handler.post(object:Runnable{override fun run(){ if(overlayPanel!=null){ val sec=(System.currentTimeMillis()-sessionStartedAt)/1000; timer.text=String.format(Locale.US,"SESSION  %02d:%02d:%02d",sec/3600,(sec%3600)/60,sec%60); handler.postDelayed(this,1000)}}})
+        val created = BoosterHud(this, hudListener)
+        hud = created
+        created.show()
+        fpsMonitor?.stop()
+        fpsMonitor = FpsMonitor { lastFps = it }.also { it.start() }
+        handler.removeCallbacks(hudTick)
+        handler.post(hudTick)
     }
 
-    private fun toggleDnd() {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (!nm.isNotificationPolicyAccessGranted) return
-        val current = nm.currentInterruptionFilter
-        runCatching {
-            nm.setInterruptionFilter(
-                if (current == NotificationManager.INTERRUPTION_FILTER_PRIORITY) {
-                    NotificationManager.INTERRUPTION_FILTER_ALL
-                } else {
-                    NotificationManager.INTERRUPTION_FILTER_PRIORITY
-                }
+    private fun hideHud() {
+        handler.removeCallbacks(hudTick)
+        fpsMonitor?.stop()
+        fpsMonitor = null
+        lastFps = 0f
+        hud?.removeAll()
+        hud = null
+    }
+
+    private val hudTick = object : Runnable {
+        override fun run() {
+            val current = hud ?: return
+            val elapsed = if (sessionStartedAt > 0L) {
+                System.currentTimeMillis() - sessionStartedAt
+            } else {
+                0L
+            }
+            current.update(
+                elapsed,
+                lastFps,
+                DeviceStats.memory(this@BoosterService).usedPercent,
+                DeviceStats.battery(this@BoosterService).temperatureC
             )
-        }.onSuccess {
+            handler.postDelayed(this, 1000L)
+        }
+    }
+
+    private val hudListener = object : BoosterHud.Listener {
+        override fun onEndSession() {
+            stopSelf()
+        }
+
+        override fun onClearRam() {
+            Thread {
+                val result = RamCleaner.free(this@BoosterService, 12)
+                handler.post {
+                    val message = if (result.freedMb > 0) {
+                        getString(R.string.ram_freed, result.freedMb)
+                    } else {
+                        getString(R.string.ram_cleared, result.killed)
+                    }
+                    runCatching {
+                        Toast.makeText(this@BoosterService, message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }.start()
+        }
+
+        override fun onOpenApp() {
+            val launch = packageManager.getLaunchIntentForPackage(packageName) ?: return
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { startActivity(launch) }
+        }
+
+        override fun onDndChanged() {
             dndChangedByUser = true
         }
-    }
-    private fun removeToolbox() { overlayPanel?.let { runCatching { windowManager?.removeView(it) } }; overlayPanel=null }
-
-    private fun openToolboxLegacy() {
-        val tv = bubble as? TextView ?: return
-        tv.text = "⚡\nTOOLS"
-        tv.setOnClickListener { stopSelf() }
-        Handler(Looper.getMainLooper()).postDelayed({ if (bubble != null) tv.text = "⚡" }, 2500L)
-    }
-
-    private fun updateBubble(active: Boolean) {
-        (bubble as? TextView)?.text = if (active) "⚡" else "•"
     }
 
     private fun updateThermalPeak() {
@@ -519,21 +457,9 @@ class BoosterService : Service() {
             .apply()
     }
 
-    private fun dndButtonLabel(): String {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (!nm.isNotificationPolicyAccessGranted) return "DND: N/A"
-        return when (nm.currentInterruptionFilter) {
-            NotificationManager.INTERRUPTION_FILTER_PRIORITY,
-            NotificationManager.INTERRUPTION_FILTER_ALARMS,
-            NotificationManager.INTERRUPTION_FILTER_NONE -> "DND: ON"
-            else -> "DND: OFF"
-        }
-    }
-
     private fun finishCurrentSessionForReplacement(): Boolean {
         handler.removeCallbacks(poller)
-        removeToolbox()
-        removeBubble()
+        hideHud()
         saveSessionHistory()
 
         val dndRestored = restoreDnd()
@@ -593,11 +519,6 @@ class BoosterService : Service() {
             .putLong("last_duration_ms", duration)
             .putInt("last_peak_thermal", peakThermalStatus)
             .apply()
-    }
-
-    private fun removeBubble() {
-        bubble?.let { view -> runCatching { windowManager?.removeView(view) } }
-        bubble = null
     }
 
     private fun formatDuration(ms:Long):String { val s=ms/1000; return String.format(Locale.US,"%02d:%02d:%02d",s/3600,(s%3600)/60,s%60) }

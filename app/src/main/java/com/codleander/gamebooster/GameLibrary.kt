@@ -2,6 +2,8 @@ package com.codleander.gamebooster
 
 import android.content.Context
 import android.content.Intent
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
@@ -63,4 +65,31 @@ object GameLibrary {
     }
 
     fun isPopular(packageName: String): Boolean = POPULAR.containsKey(packageName)
+
+    /**
+     * Finds the game the user launched most recently (last 12 hours) so the home screen can
+     * offer it right away instead of asking the user to pick it again.
+     */
+    fun lastPlayed(context: Context, games: List<GameInfo>): GameInfo? {
+        if (!RamCleaner.hasUsageAccess(context)) return null
+        val byPackage = games.filter { it.installed }.associateBy { it.packageName }
+        if (byPackage.isEmpty()) return null
+        val manager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val end = System.currentTimeMillis()
+        val events = runCatching {
+            manager.queryEvents(end - 12L * 60L * 60L * 1000L, end)
+        }.getOrNull() ?: return null
+        val event = UsageEvents.Event()
+        var found: String? = null
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND ||
+                event.eventType == UsageEvents.Event.ACTIVITY_RESUMED
+            ) {
+                val candidate = byPackage[event.packageName]
+                if (candidate != null) found = candidate.packageName
+            }
+        }
+        return found?.let { byPackage[it] }
+    }
 }

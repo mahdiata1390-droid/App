@@ -164,4 +164,37 @@
     <string name="game_mode_needs_access">برای حالت بازی، دسترسی مزاحمت را فعال کن</string>
     <string name="settings_unavailable">این صفحه تنظیمات روی این دستگاه موجود نیست</string>
     <string name="boost_zero">۰٪</string>
+
+    <string name="quick_actions">اکشن‌های سریع</string>
+    <string name="qa_dnd">مزاحمت</string>
+    <string name="qa_fps">نمایش FPS</string>
+    <string name="qa_ram">آزادسازی رم</string>
+    <string name="qa_ram_sub">با یک لمس</string>
+    <string name="qa_on">روشن</string>
+    <string name="qa_off">خاموش</string>
+    <string name="dnd_on">مزاحمت قطع</string>
+    <string name="dnd_off">مزاحمت آزاد</string>
+    <string name="dnd_need_access">دسترسی بده</string>
+    <string name="dnd_access_needed">دسترسی «مزاحمت نکن» را بده و دوباره امتحان کن</string>
+    <string name="dnd_access_hint">گیم بوستر را در لیست دسترسی مزاحمت‌نکن فعال کن</string>
+    <string name="dnd_on_toast">حالت مزاحمت‌نکن روشن شد</string>
+    <string name="dnd_off_toast">حالت مزاحمت‌نکن خاموش شد</string>
+    <string name="perm_dnd">دسترسی مزاحمت‌نکن</string>
+    <string name="perm_dnd_sub">تا حالت بازی واقعاً مزاحمت‌ها را قطع کند</string>
+
+    <string name="hud_title">جعبه ابزار بازی</string>
+    <string name="hud_bubble_desc">جعبه ابزار گیم بوستر</string>
+    <string name="hud_drag_hint">برای جابه‌جایی بکش</string>
+    <string name="hud_close">بستن جعبه ابزار</string>
+    <string name="hud_free_ram">آزادسازی رم</string>
+    <string name="hud_fps_hud">نمایش FPS</string>
+    <string name="hud_fps_visible">FPS روشن</string>
+    <string name="hud_fps_hidden">FPS خاموش</string>
+    <string name="hud_open_app">برنامه</string>
+    <string name="hud_end_session">پایان جلسه</string>
+    <string name="fps_hud_enabled">نمایشگر FPS روشن شد</string>
+    <string name="fps_hud_disabled">نمایشگر FPS مخفی شد</string>
+    <string name="ram_cleaning">در حال آزادسازی رم…</string>
+    <string name="ram_freed">%1$d مگابایت آزاد شد</string>
+    <string name="ram_cleared">%1$d برنامه بسته شد</string>
 </resources>

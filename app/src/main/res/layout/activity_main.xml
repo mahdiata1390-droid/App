@@ -8,13 +8,20 @@
     <ImageView
         android:id="@+id/backdrop"
         android:layout_width="match_parent"
-        android:layout_height="480dp"
+        android:layout_height="640dp"
         android:layout_gravity="top"
-        android:alpha="0.42"
+        android:alpha="0.55"
         android:contentDescription="@null"
         android:importantForAccessibility="no"
         android:scaleType="centerCrop"
-        android:src="@drawable/bg_lightning" />
+        android:src="@drawable/bg_hero" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="640dp"
+        android:layout_gravity="top"
+        android:background="@drawable/bg_backdrop_scrim"
+        android:importantForAccessibility="no" />
 
     <FrameLayout
         android:id="@+id/pageHost"

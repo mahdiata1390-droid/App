@@ -173,4 +173,39 @@
     <string name="game_mode_needs_access">Allow Do Not Disturb access to use Game Mode</string>
     <string name="settings_unavailable">This settings screen is not available on this device</string>
     <string name="boost_zero">0%</string>
+
+    <!-- Quick actions -->
+    <string name="quick_actions">Quick Actions</string>
+    <string name="qa_dnd">DND</string>
+    <string name="qa_fps">FPS HUD</string>
+    <string name="qa_ram">Free RAM</string>
+    <string name="qa_ram_sub">One tap</string>
+    <string name="qa_on">On</string>
+    <string name="qa_off">Off</string>
+    <string name="dnd_on">DND on</string>
+    <string name="dnd_off">DND off</string>
+    <string name="dnd_need_access">Grant access</string>
+    <string name="dnd_access_needed">Allow Do Not Disturb access, then try again</string>
+    <string name="dnd_access_hint">Enable Game Booster in the Do Not Disturb access list</string>
+    <string name="dnd_on_toast">Do Not Disturb is on</string>
+    <string name="dnd_off_toast">Do Not Disturb is off</string>
+    <string name="perm_dnd">Do Not Disturb Access</string>
+    <string name="perm_dnd_sub">Lets Game Mode really silence interruptions</string>
+
+    <!-- In-game HUD -->
+    <string name="hud_title">GAME TOOLBOX</string>
+    <string name="hud_bubble_desc">Game Booster toolbox</string>
+    <string name="hud_drag_hint">Drag to move</string>
+    <string name="hud_close">Close toolbox</string>
+    <string name="hud_free_ram">FREE RAM</string>
+    <string name="hud_fps_hud">FPS HUD</string>
+    <string name="hud_fps_visible">FPS HUD ON</string>
+    <string name="hud_fps_hidden">FPS HUD OFF</string>
+    <string name="hud_open_app">APP</string>
+    <string name="hud_end_session">END SESSION</string>
+    <string name="fps_hud_enabled">FPS overlay enabled</string>
+    <string name="fps_hud_disabled">FPS overlay hidden</string>
+    <string name="ram_cleaning">Freeing RAM…</string>
+    <string name="ram_freed">%1$d MB freed</string>
+    <string name="ram_cleared">%1$d apps closed</string>
 </resources>

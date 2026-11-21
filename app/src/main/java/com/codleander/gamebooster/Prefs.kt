@@ -48,6 +48,12 @@ object Prefs {
         prefs(context).edit().putString("language", language).apply()
     }
 
+    fun fpsHud(context: Context): Boolean = prefs(context).getBoolean("fps_hud", false)
+
+    fun setFpsHud(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("fps_hud", enabled).apply()
+    }
+
     fun displayName(context: Context): String =
         prefs(context).getString("display_name", "")?.trim() ?: ""
 

@@ -35,6 +35,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.LinearInterpolator
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.GridLayout
@@ -119,6 +120,7 @@ class MainActivity : Activity() {
 
         initSounds()
         applyAppearance()
+        animateBackdrop()
         bindNavigation()
         bindHome()
         bindLibrary()
@@ -144,6 +146,7 @@ class MainActivity : Activity() {
         refreshHomeStatus()
         refreshPermissions()
         syncToggles()
+        refreshQuickActions()
         if (currentPage == PAGE_HISTORY) refreshHistory()
     }
 
@@ -277,6 +280,102 @@ class MainActivity : Activity() {
         chip.setOnClickListener { tapFeedback(); showPage(PAGE_LIBRARY) }
         stop.setOnClickListener { stopActiveSession() }
         pressFeedback(boostButton, chip, stop)
+
+        val qaDnd = findViewById<View>(R.id.qaDnd)
+        val qaFps = findViewById<View>(R.id.qaFps)
+        val qaRam = findViewById<View>(R.id.qaRam)
+        qaDnd.setOnClickListener { tapFeedback(); toggleDndQuick() }
+        qaFps.setOnClickListener { tapFeedback(); toggleFpsQuick() }
+        qaRam.setOnClickListener { tapFeedback(); freeRamQuick() }
+        pressFeedback(qaDnd, qaFps, qaRam)
+    }
+
+    private fun refreshQuickActions() {
+        val dndState = findViewById<TextView>(R.id.qaDndState)
+        when {
+            !DndHelper.hasAccess(this) -> {
+                dndState.setText(R.string.dnd_need_access)
+                dndState.setTextColor(ContextCompat.getColor(this, R.color.gb_muted))
+            }
+            DndHelper.isOn(this) -> {
+                dndState.setText(R.string.dnd_on)
+                dndState.setTextColor(ContextCompat.getColor(this, R.color.gb_green))
+            }
+            else -> {
+                dndState.setText(R.string.dnd_off)
+                dndState.setTextColor(ContextCompat.getColor(this, R.color.gb_muted))
+            }
+        }
+        val fpsState = findViewById<TextView>(R.id.qaFpsState)
+        val fpsOn = Prefs.fpsHud(this)
+        fpsState.setText(if (fpsOn) R.string.qa_on else R.string.qa_off)
+        fpsState.setTextColor(
+            ContextCompat.getColor(this, if (fpsOn) R.color.gb_green else R.color.gb_muted)
+        )
+    }
+
+    private fun toggleDndQuick() {
+        val result = DndHelper.toggle(this)
+        if (result == null) {
+            DndHelper.openAccessSettings(this)
+            toast(getString(R.string.dnd_access_needed))
+            refreshQuickActions()
+            return
+        }
+        playSound(if (result) successSound else tapSound, 0.7f)
+        toast(getString(if (result) R.string.dnd_on_toast else R.string.dnd_off_toast))
+        refreshQuickActions()
+    }
+
+    private fun toggleFpsQuick() {
+        val enabled = !Prefs.fpsHud(this)
+        Prefs.setFpsHud(this, enabled)
+        playSound(tapSound, 0.6f)
+        refreshQuickActions()
+        toast(getString(if (enabled) R.string.fps_hud_enabled else R.string.fps_hud_disabled))
+        if (activeBoost() != null) {
+            val intent = Intent(this, BoosterService::class.java).apply {
+                action = BoosterService.ACTION_REFRESH_HUD
+            }
+            runCatching { startService(intent) }
+        }
+    }
+
+    private fun freeRamQuick() {
+        feedback(true)
+        toast(getString(R.string.ram_cleaning))
+        Thread {
+            val result = RamCleaner.free(this, 8)
+            ui.post {
+                if (isFinishing || isDestroyed) return@post
+                toast(
+                    if (result.freedMb > 0) {
+                        getString(R.string.ram_freed, result.freedMb)
+                    } else {
+                        getString(R.string.ram_cleared, result.killed)
+                    }
+                )
+                refreshDeviceStats()
+            }
+        }.start()
+    }
+
+    private fun animateBackdrop() {
+        val backdrop = findViewById<View>(R.id.backdrop)
+        backdrop.animate().cancel()
+        backdrop.translationY = 0f
+        backdrop.animate().translationY(-dp(26).toFloat()).setDuration(9000L)
+            .setInterpolator(LinearInterpolator())
+            .withEndAction { swingBackdrop(backdrop) }
+            .start()
+    }
+
+    private fun swingBackdrop(backdrop: View) {
+        if (isFinishing || isDestroyed) return
+        backdrop.animate().translationY(0f).setDuration(9000L)
+            .setInterpolator(LinearInterpolator())
+            .withEndAction { animateBackdrop() }
+            .start()
     }
 
     private val statsTick = object : Runnable {
@@ -463,11 +562,17 @@ class MainActivity : Activity() {
         gamesLoading = true
         Thread {
             val loaded = runCatching { GameLibrary.load(this) }.getOrDefault(emptyList())
+            val recent = runCatching { GameLibrary.lastPlayed(this, loaded) }.getOrNull()
             ui.post {
                 gamesLoading = false
                 games.clear()
                 games.addAll(loaded)
                 renderGames()
+                if (recent != null && selectedGame == null && activeBoost() == null) {
+                    selectedGame = recent
+                    updateHomeChip()
+                    refreshHomeStatus()
+                }
             }
         }.start()
     }
@@ -996,7 +1101,10 @@ class MainActivity : Activity() {
         gameMode.setOnCheckedChangeListener { _, checked ->
             if (syncingToggles) return@setOnCheckedChangeListener
             Prefs.setGameMode(this, checked)
-            if (checked && !hasDndAccess()) toast(getString(R.string.game_mode_needs_access))
+            if (checked && !hasDndAccess()) {
+                toast(getString(R.string.game_mode_needs_access))
+                DndHelper.openAccessSettings(this)
+            }
         }
         val notifications = findViewById<Switch>(R.id.notificationSwitch)
         notifications.setOnCheckedChangeListener { _, checked ->
@@ -1123,7 +1231,7 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.root).setBackgroundResource(
             if (amoled) R.drawable.bg_amoled else R.drawable.bg_app
         )
-        findViewById<ImageView>(R.id.backdrop).alpha = if (amoled) 0.10f else 0.42f
+        findViewById<ImageView>(R.id.backdrop).alpha = if (amoled) 0.22f else 0.55f
     }
 
     // --------------------------------------------------------------- permissions
@@ -1136,6 +1244,7 @@ class MainActivity : Activity() {
         val battery = findViewById<View>(R.id.permissionBatteryRow)
         val overlay = findViewById<View>(R.id.permissionOverlayRow)
         val systemSettings = findViewById<View>(R.id.permissionSettingsRow)
+        val dnd = findViewById<View>(R.id.permissionDndRow)
         back.setOnClickListener { tapFeedback(); showPage(PAGE_SETTINGS) }
         done.setOnClickListener { tapFeedback(); showPage(PAGE_HOME) }
         usage.setOnClickListener { tapFeedback(); openUsageSettings() }
@@ -1143,7 +1252,12 @@ class MainActivity : Activity() {
         battery.setOnClickListener { tapFeedback(); requestBatteryExemption() }
         overlay.setOnClickListener { tapFeedback(); openOverlaySettings() }
         systemSettings.setOnClickListener { tapFeedback(); openWriteSettings() }
-        pressFeedback(back, done, usage, notifications, battery, overlay, systemSettings)
+        dnd.setOnClickListener {
+            tapFeedback()
+            DndHelper.openAccessSettings(this)
+            toast(getString(R.string.dnd_access_hint))
+        }
+        pressFeedback(back, done, usage, notifications, battery, overlay, systemSettings, dnd)
     }
 
     private fun refreshPermissions() {
@@ -1152,25 +1266,28 @@ class MainActivity : Activity() {
         val battery = isIgnoringBatteryOptimizations()
         val overlay = Settings.canDrawOverlays(this)
         val writeSettings = Settings.System.canWrite(this)
+        val dnd = DndHelper.hasAccess(this)
 
         bindPermissionStatus(R.id.permissionUsageStatus, usage)
         bindPermissionStatus(R.id.permissionNotificationStatus, notifications)
         bindPermissionStatus(R.id.permissionBatteryStatus, battery)
         bindPermissionStatus(R.id.permissionOverlayStatus, overlay)
         bindPermissionStatus(R.id.permissionSettingsStatus, writeSettings)
+        bindPermissionStatus(R.id.permissionDndStatus, dnd)
 
-        val granted = listOf(usage, notifications, battery, overlay, writeSettings).count { it }
-        val allGranted = granted == 5
+        val granted = listOf(usage, notifications, battery, overlay, writeSettings, dnd).count { it }
+        val total = 6
+        val allGranted = granted == total
         findViewById<TextView>(R.id.permissionHeadline).text = if (allGranted) {
             getString(R.string.perm_all_granted)
         } else {
-            getString(R.string.perm_some_title, granted, 5)
+            getString(R.string.perm_some_title, granted, total)
         }
         findViewById<TextView>(R.id.permissionSubline).setText(
             if (allGranted) R.string.perm_all_granted_sub else R.string.perm_some_sub
         )
         findViewById<TextView>(R.id.permissionsValue).text =
-            getString(R.string.perm_some_title, granted, 5)
+            getString(R.string.perm_some_title, granted, total)
     }
 
     private fun bindPermissionStatus(id: Int, granted: Boolean) {
