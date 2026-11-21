@@ -130,7 +130,14 @@ class BoosterService : Service() {
                     return START_NOT_STICKY
                 }
                 if (sessionStartedAt != 0L) {
-                    finishCurrentSessionForReplacement()
+                    // A replacement session is allowed to start only after every
+                    // setting changed by the previous session has been restored.
+                    // If restoration fails, keep recovery state intact and stop
+                    // instead of starting a new session on top of stale state.
+                    if (!finishCurrentSessionForReplacement()) {
+                        stopSelf()
+                        return START_NOT_STICKY
+                    }
                 }
 
                 if (!isLaunchablePackage(requestedPackage)) {
@@ -523,14 +530,22 @@ class BoosterService : Service() {
         }
     }
 
-    private fun finishCurrentSessionForReplacement() {
+    private fun finishCurrentSessionForReplacement(): Boolean {
         handler.removeCallbacks(poller)
         removeToolbox()
         removeBubble()
         saveSessionHistory()
-        restoreDnd()
-        restoreScreenTimeout()
-        restoreBrightness()
+
+        val dndRestored = restoreDnd()
+        val timeoutRestored = restoreScreenTimeout()
+        val brightnessRestored = restoreBrightness()
+        if (!dndRestored || !timeoutRestored || !brightnessRestored) {
+            // Keep the active session and runtime recovery markers intact.
+            // onDestroy() will get another chance to restore them.
+            persistRuntimeHeartbeat()
+            return false
+        }
+
         getSharedPreferences("booster_runtime", MODE_PRIVATE).edit().clear().apply()
 
         targetPackage = null
@@ -545,8 +560,10 @@ class BoosterService : Service() {
         sessionStartScreenTimeout = -1L
         screenTimeoutChangedByService = false
         dndChangedByService = false
+        dndChangedByUser = false
         peakThermalStatus = PowerManager.THERMAL_STATUS_NONE
         usageAccessMissingSince = 0L
+        return true
     }
 
     private fun saveSessionHistory() {
