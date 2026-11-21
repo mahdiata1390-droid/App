@@ -28,8 +28,8 @@ class MainActivity : Activity() {
     private lateinit var thermalView: TextView
     private lateinit var refreshView: TextView
     private lateinit var batteryView: TextView
-    private lateinit var gamesContainer: LinearLayout
-    private lateinit var lightningIcon: ImageView
+    private lateinit var gamesContainer: ViewGroup
+    private lateinit var lightningIcon: View
     private lateinit var statusView: TextView
     private lateinit var boostView: TextView
     private var selectedPackage: String? = null
@@ -69,7 +69,7 @@ class MainActivity : Activity() {
         refreshView = findViewById(R.id.refresh)
         batteryView = findViewById(R.id.battery)
         gamesContainer = findViewById(R.id.games)
-        lightningIcon = findViewById(R.id.lightningIcon)
+        lightningIcon = findViewById(R.id.menuIcon)
         statusView = findViewById(R.id.status)
         boostView = findViewById(R.id.boost)
         dndState = findViewById(R.id.dndPermissionState)
@@ -119,6 +119,7 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.permissionButton).setOnClickListener { pulse(it); showPage(permissionPage); updatePermissionStates() }
         findViewById<TextView>(R.id.homePremium).setOnClickListener { pulse(it); showPage(aboutPage) }
         refreshAll()
+        findViewById<View>(R.id.splashPage).postDelayed({ findViewById<View>(R.id.splashPage).animate().alpha(0f).setDuration(280L).withEndAction { findViewById<View>(R.id.splashPage).visibility = View.GONE }.start() }, 1100L)
     }
 
     override fun onResume() {
