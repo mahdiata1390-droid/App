@@ -20,6 +20,9 @@ android {
             minifyEnabled false
             shrinkResources false
             debuggable false
+            // Temporary CI signing for device-install verification.
+            // This must be replaced with the permanent Myket release keystore before public distribution.
+            signingConfig signingConfigs.debug
         }
         debug {
             minifyEnabled false
