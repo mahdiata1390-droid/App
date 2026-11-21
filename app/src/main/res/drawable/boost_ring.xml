@@ -1,8 +1,11 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:left="18dp" android:top="18dp" android:right="18dp" android:bottom="18dp">
+        <shape android:shape="oval"><solid android:color="#030A18"/><stroke android:width="12dp" android:color="#0A55FF"/></shape>
+    </item>
     <item android:left="28dp" android:top="28dp" android:right="28dp" android:bottom="28dp">
-        <shape android:shape="oval"><solid android:color="#061A38"/><stroke android:width="8dp" android:color="#116DFF"/></shape>
+        <shape android:shape="oval"><solid android:color="#071B3A"/><stroke android:width="7dp" android:color="#19B5FF"/></shape>
     </item>
     <item android:left="39dp" android:top="39dp" android:right="39dp" android:bottom="39dp">
-        <shape android:shape="oval"><solid android:color="#08162D"/><stroke android:width="3dp" android:color="#59D8FF"/></shape>
+        <shape android:shape="oval"><solid android:color="#020A18"/><stroke android:width="3dp" android:color="#8DEBFF"/></shape>
     </item>
 </layer-list>
