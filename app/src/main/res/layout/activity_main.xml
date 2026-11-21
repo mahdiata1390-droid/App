@@ -46,7 +46,7 @@
                     <TextView android:layout_width="0dp" android:layout_height="46dp" android:layout_weight="1" android:gravity="center" android:text="Popular" android:textColor="@color/gb_muted"/>
                     <TextView android:layout_width="0dp" android:layout_height="46dp" android:layout_weight="1" android:gravity="center" android:text="Installed" android:textColor="@color/gb_muted"/>
                 </LinearLayout>
-                <LinearLayout android:id="@+id/games" android:layout_width="match_parent" android:layout_height="wrap_content" android:columnCount="2" android:useDefaultMargins="false" android:layout_marginTop="14dp"/>
+                <GridLayout android:id="@+id/games" android:layout_width="match_parent" android:layout_height="wrap_content" android:columnCount="2" android:useDefaultMargins="false" android:layout_marginTop="14dp"/>
             </LinearLayout>
         </ScrollView>
 
