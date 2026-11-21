@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@drawable/electric_background">
+    android:background="@drawable/electric_background" android:layoutDirection="ltr">
 
     <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_marginBottom="78dp">
 
@@ -10,7 +10,7 @@
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
                     <ImageView android:id="@+id/lightningIcon" android:layout_width="38dp" android:layout_height="38dp" android:src="@drawable/ic_lightning" android:contentDescription="Game Booster"/>
                     <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="10dp" android:text="Game Booster" android:textColor="@color/gb_text" android:textSize="25sp" android:textStyle="bold"/>
-                    <TextView android:id="@+id/homePremium" android:layout_width="42dp" android:layout_height="42dp" android:gravity="center" android:text="♛" android:textColor="#FFE36B" android:textSize="23sp" android:background="@drawable/neo_icon"/>
+                    <TextView android:id="@+id/homePremium" android:layout_width="48dp" android:layout_height="42dp" android:gravity="center" android:text="♛" android:textColor="#FFE36B" android:textSize="23sp" android:background="@drawable/neo_icon"/>
                 </LinearLayout>
                 <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:padding="11dp" android:gravity="center" android:text="SYSTEM READY • SELECT A GAME" android:textColor="@color/gb_muted" android:textSize="10sp" android:textStyle="bold" android:background="@drawable/electric_status"/>
                 <FrameLayout android:layout_width="match_parent" android:layout_height="270dp" android:layout_marginTop="12dp">
@@ -22,7 +22,7 @@
                     </LinearLayout>
                 </FrameLayout>
                 <GridLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:columnCount="2" android:rowCount="2" android:useDefaultMargins="false">
-                    <TextView android:id="@+id/ram" android:layout_width="0dp" android:layout_height="86dp" android:layout_columnWeight="1" android:layout_margin="5dp" android:gravity="center" android:text="RAM&#10;--" android:textColor="@color/gb_text" android:background="@drawable/neo_card"/>
+                    <TextView android:id="@+id/ram" android:layout_width="0dp" android:layout_height="86dp" android:layout_columnWeight="1" android:layout_margin="5dp" android:gravity="center" android:text="RAM&#10;--" android:textColor="@color/gb_text" android:background="@drawable/neo_card_strong"/>
                     <TextView android:id="@+id/battery" android:layout_width="0dp" android:layout_height="86dp" android:layout_columnWeight="1" android:layout_margin="5dp" android:gravity="center" android:text="BATTERY&#10;--" android:textColor="@color/gb_text" android:background="@drawable/neo_card"/>
                     <TextView android:id="@+id/thermal" android:layout_width="0dp" android:layout_height="86dp" android:layout_columnWeight="1" android:layout_margin="5dp" android:gravity="center" android:text="TEMP&#10;--" android:textColor="@color/gb_text" android:background="@drawable/neo_card"/>
                     <TextView android:id="@+id/networkStatus" android:layout_width="0dp" android:layout_height="86dp" android:layout_columnWeight="1" android:layout_margin="5dp" android:gravity="center" android:text="NETWORK&#10;--" android:textColor="@color/gb_text" android:background="@drawable/neo_card"/>
@@ -46,7 +46,7 @@
                     <TextView android:layout_width="0dp" android:layout_height="46dp" android:layout_weight="1" android:gravity="center" android:text="Popular" android:textColor="@color/gb_muted"/>
                     <TextView android:layout_width="0dp" android:layout_height="46dp" android:layout_weight="1" android:gravity="center" android:text="Installed" android:textColor="@color/gb_muted"/>
                 </LinearLayout>
-                <LinearLayout android:id="@+id/games" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="14dp"/>
+                <LinearLayout android:id="@+id/games" android:layout_width="match_parent" android:layout_height="wrap_content" android:columnCount="2" android:useDefaultMargins="false" android:layout_marginTop="14dp"/>
             </LinearLayout>
         </ScrollView>
 
@@ -77,13 +77,13 @@
                 <Button android:id="@+id/dnd" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="14dp" android:text="⚙  Boost Mode • Performance / Balanced / Battery" android:textColor="@color/gb_text" android:background="@drawable/neo_button"/>
                 <Button android:id="@+id/appearanceButton" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="10dp" android:text="◐  Appearance • Dark / AMOLED" android:textColor="@color/gb_text" android:background="@drawable/neo_button"/>
                 <Button android:id="@+id/languageButton" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="10dp" android:text="◎  Language • English / فارسی" android:textColor="@color/gb_text" android:background="@drawable/neo_button"/>
-                <Button android:id="@+id/permissionButton" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="10dp" android:text="🛡  Permission Center" android:textColor="@color/gb_accent_bright" android:background="@drawable/neo_button"/>
+                <Button android:id="@+id/permissionButton" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="10dp" android:text="◈  Permission Center" android:textColor="@color/gb_accent_bright" android:background="@drawable/neo_button"/>
             </LinearLayout>
         </ScrollView>
 
         <ScrollView android:id="@+id/permissionPage" android:visibility="gone" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="18dp">
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="🛡  Permission Center" android:textColor="@color/gb_text" android:textSize="24sp" android:textStyle="bold"/>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="◈  Permission Center" android:textColor="@color/gb_text" android:textSize="24sp" android:textStyle="bold"/>
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center" android:text="✓  All Permissions Granted&#10;Your device is fully optimized!" android:textColor="@color/gb_accent_bright" android:textSize="16sp" android:background="@drawable/neo_card" android:padding="22dp"/>
                 <Button android:id="@+id/dndPermission" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="14dp" android:text="ENABLE • Game Mode / DND" android:textColor="@color/gb_text" android:background="@drawable/neo_button"/>
                 <TextView android:id="@+id/dndPermissionState" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="8dp" android:text="CHECKING..." android:textColor="@color/gb_muted"/>
@@ -124,7 +124,7 @@
 
     <LinearLayout android:id="@+id/bottomNav" android:layout_width="match_parent" android:layout_height="70dp" android:layout_gravity="bottom" android:orientation="horizontal" android:padding="7dp" android:background="@drawable/neo_card">
         <TextView android:id="@+id/navHome" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="⌂&#10;Home" android:textColor="@color/gb_accent_bright" android:textSize="11sp" android:clickable="true"/>
-        <TextView android:id="@+id/navGames" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="🎮&#10;Games" android:textColor="@color/gb_muted" android:textSize="11sp" android:clickable="true"/>
+        <TextView android:id="@+id/navGames" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="GAME&#10;Games" android:textColor="@color/gb_muted" android:textSize="11sp" android:clickable="true"/>
         <TextView android:id="@+id/navHistory" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="▥&#10;History" android:textColor="@color/gb_muted" android:textSize="11sp" android:clickable="true"/>
         <TextView android:id="@+id/navSettings" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="⚙&#10;Settings" android:textColor="@color/gb_muted" android:textSize="11sp" android:clickable="true"/>
     </LinearLayout>
