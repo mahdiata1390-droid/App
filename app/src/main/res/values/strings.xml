@@ -262,4 +262,7 @@
     <string name="weekly_trend_flat">Same pace as last week</string>
     <string name="weekly_active_days">%1$d active days</string>
     <string name="weekly_goal">Weekly goal %1$d%%</string>
+    <string name="integrity_title">Modified copy detected</string>
+    <string name="integrity_message">The signature of this copy does not match the official Game Booster, so it will not run. Install the official release instead.</string>
+    <string name="integrity_close">Close</string>
 </resources>

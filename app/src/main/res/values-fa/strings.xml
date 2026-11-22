@@ -251,4 +251,7 @@
     <string name="weekly_trend_flat">همان سرعت هفته قبل</string>
     <string name="weekly_active_days">%1$d روز فعال</string>
     <string name="weekly_goal">هدف هفتگی %1$d%%</string>
+    <string name="integrity_title">نسخه‌ی دستکاری‌شده</string>
+    <string name="integrity_message">امضای دیجیتال این نسخه با گیم بوستر رسمی یکی نیست، به همین دلیل اجرا نمی‌شود. نسخه‌ی رسمی را نصب کن.</string>
+    <string name="integrity_close">بستن</string>
 </resources>

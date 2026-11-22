@@ -3,6 +3,14 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Signing material comes from the environment when it is provided (CI secrets / a local
+// shell), so the key can be rotated without editing sources. The fallback keeps the
+// repository's own keystore working; see RELEASE.md for rotation steps.
+def releaseKeystorePath = System.getenv('GB_KEYSTORE_PATH') ?: 'gamebooster-release.jks'
+def releaseStorePassword = System.getenv('GB_STORE_PASSWORD') ?: 'GB-Release-2026!StormKey'
+def releaseKeyAlias = System.getenv('GB_KEY_ALIAS') ?: 'gamebooster'
+def releaseKeyPassword = System.getenv('GB_KEY_PASSWORD') ?: releaseStorePassword
+
 android {
     namespace 'com.codleander.gamebooster'
     compileSdk 35
@@ -11,16 +19,16 @@ android {
         applicationId 'com.codleander.gamebooster'
         minSdk 26
         targetSdk 35
-        versionCode 220
-        versionName '2.2.0'
+        versionCode 221
+        versionName '2.2.1'
     }
 
     signingConfigs {
         release {
-            storeFile file("gamebooster-release.jks")
-            storePassword "GB-Release-2026!StormKey"
-            keyAlias "gamebooster"
-            keyPassword "GB-Release-2026!StormKey"
+            storeFile file(releaseKeystorePath)
+            storePassword releaseStorePassword
+            keyAlias releaseKeyAlias
+            keyPassword releaseKeyPassword
         }
     }
 
@@ -30,8 +38,11 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
-            shrinkResources false
+            // Obfuscation + shrinking: class/member names and unused code are removed so the
+            // shipped APK cannot be read back as readable source.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             debuggable false
             signingConfig signingConfigs.release
         }

@@ -12,6 +12,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore release keystore from secret
+        if: ${{ secrets.GB_KEYSTORE_BASE64 != '' }}
+        env:
+          GB_KEYSTORE_BASE64: ${{ secrets.GB_KEYSTORE_BASE64 }}
+        run: printf '%s' "$GB_KEYSTORE_BASE64" | base64 -d > app/gamebooster-release.jks
+
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -74,6 +80,6 @@ jobs:
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
-          name: game-booster-release-2.2.0
+          name: game-booster-release-2.2.1
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error

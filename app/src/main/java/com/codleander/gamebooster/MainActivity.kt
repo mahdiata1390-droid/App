@@ -127,6 +127,10 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setTheme(Accent.themeRes(Prefs.accent(this)))
+        if (!IntegrityCheck.isTrusted(this)) {
+            showTamperBlock()
+            return
+        }
         setContentView(R.layout.activity_main)
 
         initSounds()
@@ -152,6 +156,15 @@ class MainActivity : Activity() {
             pendingQuickBoost = true
             ui.postDelayed({ if (pendingQuickBoost) requestQuickBoost() }, 900L)
         }
+    }
+
+    private fun showTamperBlock() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.integrity_title)
+            .setMessage(R.string.integrity_message)
+            .setCancelable(false)
+            .setPositiveButton(R.string.integrity_close) { _, _ -> finishAffinity() }
+            .show()
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -119,6 +119,10 @@ class BoosterService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!IntegrityCheck.isTrusted(this)) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         when (intent?.action) {
             ACTION_STOP -> stopSelf()
             ACTION_REFRESH_HUD -> {
