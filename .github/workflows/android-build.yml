@@ -39,7 +39,16 @@ jobs:
         run: gradle --no-daemon testDebugUnitTest
 
       - name: Run Android lint
-        run: gradle --no-daemon lintRelease
+        run: |
+          set +e
+          gradle --no-daemon --console=plain lintRelease > /tmp/lint.log 2>&1
+          status=$?
+          echo "lint exit: $status"
+          if [ "$status" -ne 0 ]; then
+            echo "--- lint issues ---"
+            head -200 app/build/reports/lint-results-release.txt 2>/dev/null || grep -nE "Error:|Lint found|error:" /tmp/lint.log | head -40
+          fi
+          exit $status
 
       - name: Build release APK
         run: gradle --no-daemon assembleRelease
