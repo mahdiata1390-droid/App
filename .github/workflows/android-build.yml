@@ -51,11 +51,11 @@ jobs:
           status=$?
           echo "lint exit: $status"
           if [ "$status" -ne 0 ]; then
-            echo "--- lint issues ---"
-            grep -E ": (Error|Warning): " app/build/reports/lint-results-release.txt | head -60 \
-              || grep -nE "Error:|Lint found|error:" /tmp/lint.log | head -40
             echo "--- lint totals ---"
             grep -E "^[0-9]+ errors?" app/build/reports/lint-results-release.txt | tail -3
+            echo "--- lint errors ---"
+            grep -E ": Error: " app/build/reports/lint-results-release.txt | head -40 \
+              || grep -nE "Error:|error:" /tmp/lint.log | head -40
           fi
           exit $status
 
