@@ -71,6 +71,13 @@ class MainActivity : Activity() {
         private const val STEP_DONE = 2
 
         private const val REQ_NOTIFICATIONS = 1001
+
+        const val ACTION_QUICK_BOOST = "com.codleander.gamebooster.QUICK_BOOST"
+
+        private const val SOUND_NEON = 0
+        private const val SOUND_SOFT = 1
+        private const val SOUND_ARCADE = 2
+        private const val SOUND_SILENT = 3
     }
 
     private val ui = Handler(Looper.getMainLooper())
@@ -87,6 +94,9 @@ class MainActivity : Activity() {
     private var lastPingAt = 0L
     private var historyRangeDays = 30
     private var syncingToggles = false
+    private var aurora: AuroraBackgroundView? = null
+    private var pendingQuickBoost = false
+    private var lastSessionActive: Boolean? = null
 
     private var sounds: SoundPool? = null
     private var tapSound = 0
@@ -116,6 +126,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setTheme(Accent.themeRes(Prefs.accent(this)))
         setContentView(R.layout.activity_main)
 
         initSounds()
@@ -136,10 +147,36 @@ class MainActivity : Activity() {
         showPage(PAGE_HOME)
         loadGames()
         startSplash()
+
+        if (intent?.action == ACTION_QUICK_BOOST) {
+            pendingQuickBoost = true
+            ui.postDelayed({ if (pendingQuickBoost) requestQuickBoost() }, 900L)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == ACTION_QUICK_BOOST) {
+            pendingQuickBoost = true
+            requestQuickBoost()
+        }
+    }
+
+    private fun requestQuickBoost() {
+        pendingQuickBoost = false
+        if (activeBoost() != null) {
+            refreshSessionUi()
+            refreshHomeStatus()
+            return
+        }
+        showPage(PAGE_HOME)
+        startBoost(selectedGame)
     }
 
     override fun onResume() {
         super.onResume()
+        aurora?.resume()
         startStatsLoop()
         updateHomeChip()
         refreshSessionUi()
@@ -151,6 +188,7 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        aurora?.pause()
         stopStatsLoop()
         super.onPause()
     }
@@ -210,6 +248,7 @@ class MainActivity : Activity() {
                 pageView.translationY = dp(12).toFloat()
                 pageView.animate().alpha(1f).translationY(0f).setDuration(230L)
                     .setInterpolator(DecelerateInterpolator()).start()
+                animatePageContent(pageView)
             } else if (pageView.visibility != View.GONE) {
                 pageView.animate().cancel()
                 pageView.visibility = View.GONE
@@ -239,10 +278,11 @@ class MainActivity : Activity() {
     private fun updateNav(page: String) {
         for (index in navPages.indices) {
             val selected = navPages[index] == page
-            val color = ContextCompat.getColor(
-                this,
-                if (selected) R.color.gb_accent_bright else R.color.gb_muted
-            )
+            val color = if (selected) {
+                Accent.bright(this)
+            } else {
+                ContextCompat.getColor(this, R.color.gb_muted)
+            }
             val icon = findViewById<ImageView>(navIconIds[index])
             icon.setColorFilter(color)
             findViewById<TextView>(navLabelIds[index]).setTextColor(color)
@@ -512,7 +552,7 @@ class MainActivity : Activity() {
             view.clearColorFilter()
         } else {
             view.setImageResource(R.drawable.ic_gamepad)
-            view.setColorFilter(ContextCompat.getColor(this, R.color.gb_accent_bright))
+            view.setColorFilter(Accent.bright(this))
         }
     }
 
@@ -637,7 +677,7 @@ class MainActivity : Activity() {
                 setImageDrawable(game.icon)
             } else {
                 setImageResource(R.drawable.ic_gamepad)
-                setColorFilter(ContextCompat.getColor(this@MainActivity, R.color.gb_accent_bright))
+                setColorFilter(Accent.bright(this@MainActivity))
                 alpha = 0.75f
             }
             contentDescription = game.label
@@ -668,16 +708,14 @@ class MainActivity : Activity() {
             textSize = 10f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(
-                ContextCompat.getColor(
-                    this@MainActivity,
-                    if (game.installed) R.color.gb_accent_bright else R.color.gb_muted
-                )
+                if (game.installed) Accent.bright(this@MainActivity)
+                else ContextCompat.getColor(this@MainActivity, R.color.gb_muted)
             )
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         val plus = ImageView(this).apply {
             setImageResource(R.drawable.ic_plus)
-            setColorFilter(ContextCompat.getColor(this@MainActivity, R.color.gb_accent_bright))
+            setColorFilter(Accent.bright(this@MainActivity))
             background = ContextCompat.getDrawable(this@MainActivity, R.drawable.bg_icon_circle)
             setPadding(dp(5), dp(5), dp(5), dp(5))
             layoutParams = LinearLayout.LayoutParams(dp(26), dp(26))
@@ -762,8 +800,9 @@ class MainActivity : Activity() {
         setStageText(R.string.optimizing_device, instant = true)
         for (index in 0 until 4) setStepState(index, STEP_PENDING)
 
-        val mode = Prefs.boostMode(this)
         val target = game ?: selectedGame
+        val mode = target?.let { GameProfiles.get(this, it.packageName).mode }
+            ?: Prefs.boostMode(this)
         val startedAt = System.currentTimeMillis()
 
         Thread {
@@ -831,8 +870,8 @@ class MainActivity : Activity() {
             }
             STEP_ACTIVE -> {
                 dot.setBackgroundResource(R.drawable.bg_step_circle)
-                icon.setColorFilter(ContextCompat.getColor(this, R.color.gb_accent_bright))
-                text.setTextColor(ContextCompat.getColor(this, R.color.gb_accent_soft))
+                icon.setColorFilter(Accent.bright(this))
+                text.setTextColor(Accent.soft(this))
                 dot.animate().cancel()
                 dot.scaleX = 1.06f
                 dot.scaleY = 1.06f
@@ -1015,6 +1054,12 @@ class MainActivity : Activity() {
             ring.setProgressNow(0f)
             ring.setActive(false)
         }
+        val active = session != null
+        if (lastSessionActive != active) {
+            lastSessionActive = active
+            BoosterWidgetProvider.refreshAll(this)
+            BoosterTileService.refresh(this)
+        }
     }
 
     private fun stopActiveSession() {
@@ -1062,10 +1107,12 @@ class MainActivity : Activity() {
         val serviceIntent = Intent(this, BoosterService::class.java).apply {
             action = BoosterService.ACTION_START
             putExtra(BoosterService.EXTRA_PACKAGE, game.packageName)
-            putExtra("profile_dnd", Prefs.gameMode(this@MainActivity))
+            val profile = GameProfiles.get(this@MainActivity, game.packageName)
+            putExtra("profile_dnd", profile.dnd)
             putExtra("profile_awake", true)
-            putExtra("profile_brightness", false)
-            putExtra("profile_hud", true)
+            putExtra("profile_brightness", profile.brightnessLock)
+            putExtra("profile_refresh", profile.refreshLock || Prefs.refreshLock(this@MainActivity))
+            putExtra("profile_hud", profile.hud)
         }
         runCatching {
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent)
@@ -1089,7 +1136,20 @@ class MainActivity : Activity() {
         appearance.setOnClickListener { tapFeedback(); chooseAppearance() }
         language.setOnClickListener { tapFeedback(); chooseLanguage() }
         permissions.setOnClickListener { tapFeedback(); showPage(PAGE_PERMISSIONS) }
-        pressFeedback(profile, boostMode, appearance, language, permissions)
+        val profilesRow = findViewById<View>(R.id.rowProfiles)
+        val accentRow = findViewById<View>(R.id.rowAccent)
+        val soundRow = findViewById<View>(R.id.rowSound)
+        profilesRow.setOnClickListener { tapFeedback(); openGameProfiles() }
+        accentRow.setOnClickListener { tapFeedback(); chooseAccent() }
+        soundRow.setOnClickListener { tapFeedback(); chooseSoundPack() }
+        findViewById<Switch>(R.id.refreshLockSwitch).setOnCheckedChangeListener { _, checked ->
+            if (syncingToggles) return@setOnCheckedChangeListener
+            toggleRefreshLock(checked)
+        }
+        pressFeedback(
+            profile, boostMode, appearance, language, permissions,
+            profilesRow, accentRow, soundRow
+        )
 
         val autoBoost = findViewById<Switch>(R.id.autoBoostSwitch)
         autoBoost.setOnCheckedChangeListener { _, checked ->
@@ -1120,6 +1180,7 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.languageValue).text =
             if (Prefs.language(this) == "fa") "فارسی" else "English"
         syncToggles()
+        refreshSettingValues()
     }
 
     private fun syncProfileName() {
@@ -1232,6 +1293,9 @@ class MainActivity : Activity() {
             if (amoled) R.drawable.bg_amoled else R.drawable.bg_app
         )
         findViewById<ImageView>(R.id.backdrop).alpha = if (amoled) 0.22f else 0.55f
+        aurora = findViewById(R.id.aurora)
+        aurora?.setPalette(Accent.aurora(this), Accent.auroraDeep(this))
+        aurora?.alpha = if (amoled) 0.45f else 0.72f
     }
 
     // --------------------------------------------------------------- permissions
@@ -1294,7 +1358,7 @@ class MainActivity : Activity() {
         val view = findViewById<TextView>(id)
         view.setText(if (granted) R.string.granted else R.string.grant)
         view.setTextColor(
-            ContextCompat.getColor(this, if (granted) R.color.gb_green else R.color.gb_accent_bright)
+            if (granted) ContextCompat.getColor(this, R.color.gb_green) else Accent.bright(this)
         )
     }
 
@@ -1454,6 +1518,7 @@ class MainActivity : Activity() {
             }
 
         renderRecentActivity()
+        refreshWeeklyReport()
     }
 
     private fun styleRangeTab(id: Int, selected: Boolean) {
@@ -1521,7 +1586,7 @@ class MainActivity : Activity() {
                 setImageDrawable(drawable)
             } else {
                 setImageResource(R.drawable.ic_bolt)
-                setColorFilter(ContextCompat.getColor(this@MainActivity, R.color.gb_accent_bright))
+                setColorFilter(Accent.bright(this@MainActivity))
                 setPadding(dp(8), dp(8), dp(8), dp(8))
                 background = ContextCompat.getDrawable(this@MainActivity, R.drawable.bg_icon_circle)
             }
@@ -1561,10 +1626,8 @@ class MainActivity : Activity() {
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(
-                ContextCompat.getColor(
-                    this@MainActivity,
-                    if (record.isBoost) R.color.gb_green else R.color.gb_accent_bright
-                )
+                if (record.isBoost) ContextCompat.getColor(this@MainActivity, R.color.gb_green)
+                else Accent.bright(this@MainActivity)
             )
         }
 
@@ -1605,6 +1668,250 @@ class MainActivity : Activity() {
         )
     }
 
+    // ----------------------------------------------------------- personalization
+
+    private fun refreshSettingValues() {
+        findViewById<TextView>(R.id.profilesValue).text =
+            when (val count = GameProfiles.customCount(this)) {
+                0 -> getString(R.string.profiles_value_none)
+                else -> getString(R.string.profiles_value_some, count)
+            }
+        findViewById<TextView>(R.id.accentValue).setText(accentLabelRes(Prefs.accent(this)))
+        findViewById<TextView>(R.id.soundValue).setText(soundLabelRes(Prefs.soundPack(this)))
+        syncingToggles = true
+        findViewById<Switch>(R.id.refreshLockSwitch).isChecked = Prefs.refreshLock(this)
+        syncingToggles = false
+    }
+
+    private fun accentLabelRes(accent: Int): Int = when (accent) {
+        Accent.VIOLET -> R.string.accent_violet
+        Accent.EMERALD -> R.string.accent_emerald
+        Accent.EMBER -> R.string.accent_ember
+        else -> R.string.accent_blue
+    }
+
+    private fun soundLabelRes(pack: Int): Int = when (pack) {
+        SOUND_SOFT -> R.string.sound_soft
+        SOUND_ARCADE -> R.string.sound_arcade
+        SOUND_SILENT -> R.string.sound_silent
+        else -> R.string.sound_neon
+    }
+
+    private fun chooseAccent() {
+        val labels = arrayOf(
+            getString(R.string.accent_blue),
+            getString(R.string.accent_violet),
+            getString(R.string.accent_emerald),
+            getString(R.string.accent_ember)
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.accent_color)
+            .setSingleChoiceItems(labels, Prefs.accent(this)) { dialog, which ->
+                Prefs.setAccent(this, which)
+                dialog.dismiss()
+                tapFeedback()
+                recreate()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun chooseSoundPack() {
+        val labels = arrayOf(
+            getString(R.string.sound_neon),
+            getString(R.string.sound_soft),
+            getString(R.string.sound_arcade),
+            getString(R.string.sound_silent)
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.sound_pack)
+            .setSingleChoiceItems(labels, Prefs.soundPack(this)) { dialog, which ->
+                Prefs.setSoundPack(this, which)
+                findViewById<TextView>(R.id.soundValue).setText(soundLabelRes(which))
+                dialog.dismiss()
+                playSound(successSound, 0.8f)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun toggleRefreshLock(enabled: Boolean) {
+        if (!enabled) {
+            Prefs.setRefreshLock(this, false)
+            toast(getString(R.string.refresh_off_toast))
+            return
+        }
+        val hz = RefreshRateHelper.maxHz(this)
+        if (!RefreshRateHelper.canControl(this)) {
+            Prefs.setRefreshLock(this, false)
+            findViewById<Switch>(R.id.refreshLockSwitch).isChecked = false
+            toast(getString(R.string.refresh_need_settings))
+            openWriteSettings()
+            return
+        }
+        if (hz == null) {
+            Prefs.setRefreshLock(this, false)
+            findViewById<Switch>(R.id.refreshLockSwitch).isChecked = false
+            toast(getString(R.string.refresh_unsupported))
+            return
+        }
+        Prefs.setRefreshLock(this, true)
+        tapFeedback()
+        toast(getString(R.string.refresh_on_toast, hz.toInt()))
+    }
+
+    private fun openGameProfiles() {
+        val installed = games.filter { it.installed }
+        if (installed.isEmpty()) {
+            toast(getString(R.string.profiles_empty))
+            return
+        }
+        val labels = installed.map { game ->
+            if (GameProfiles.has(this, game.packageName)) "●  ${game.label}" else game.label
+        }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.profiles)
+            .setItems(labels) { _, index -> editGameProfile(installed[index]) }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun editGameProfile(game: GameInfo) {
+        val profile = GameProfiles.get(this, game.packageName)
+        val options = arrayOf(
+            getString(R.string.profile_dnd),
+            getString(R.string.profile_brightness),
+            getString(R.string.profile_refresh),
+            getString(R.string.profile_hud)
+        )
+        val checked = booleanArrayOf(
+            profile.dnd,
+            profile.brightnessLock,
+            profile.refreshLock,
+            profile.hud
+        )
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.profile_title, game.label))
+            .setMultiChoiceItems(options, checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
+            .setPositiveButton(R.string.save) { _, _ ->
+                GameProfiles.save(
+                    this,
+                    game.packageName,
+                    GameProfile(
+                        dnd = checked[0],
+                        brightnessLock = checked[1],
+                        refreshLock = checked[2],
+                        hud = checked[3],
+                        mode = Prefs.boostMode(this),
+                        custom = true
+                    )
+                )
+                refreshSettingValues()
+                tapFeedback()
+                toast(getString(R.string.profile_saved, game.label))
+            }
+            .setNeutralButton(R.string.profile_reset) { _, _ ->
+                GameProfiles.clear(this, game.packageName)
+                refreshSettingValues()
+                toast(getString(R.string.profile_reset_done, game.label))
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun refreshWeeklyReport() {
+        val report = HistoryStore.weeklyReport(this, System.currentTimeMillis())
+        animateValue(findViewById(R.id.weeklyBoostsValue), report.boosts.toString())
+        findViewById<TextView>(R.id.weeklyPlayValue).text =
+            if (report.playMs > 0) formatPlayTime(report.playMs) else getString(R.string.dash)
+        findViewById<TextView>(R.id.weeklyFreedValue).text =
+            if (report.freedMb > 0) {
+                getString(R.string.mb_freed, report.freedMb)
+            } else {
+                getString(R.string.gain_none)
+            }
+
+        val trend = findViewById<TextView>(R.id.weeklyTrend)
+        when {
+            report.boosts == 0 -> {
+                trend.setText(R.string.gain_none)
+                trend.setTextColor(ContextCompat.getColor(this, R.color.gb_muted))
+            }
+            report.previousBoosts > 0 && report.boosts > report.previousBoosts -> {
+                trend.text = getString(
+                    R.string.weekly_trend_up,
+                    ((report.boosts - report.previousBoosts) * 100) / report.previousBoosts
+                )
+                trend.setTextColor(ContextCompat.getColor(this, R.color.gb_green))
+            }
+            report.previousBoosts > 0 && report.boosts < report.previousBoosts -> {
+                trend.text = getString(
+                    R.string.weekly_trend_down,
+                    ((report.previousBoosts - report.boosts) * 100) / report.previousBoosts
+                )
+                trend.setTextColor(ContextCompat.getColor(this, R.color.gb_red))
+            }
+            else -> {
+                trend.setText(R.string.weekly_trend_flat)
+                trend.setTextColor(Accent.bright(this))
+            }
+        }
+
+        val goal = (report.boosts * 20).coerceIn(0, 100)
+        animateBar(findViewById(R.id.weeklyGoalBar), goal)
+        val summary = buildString {
+            append(getString(R.string.weekly_active_days, report.activeDays))
+            val top = report.topGame
+            if (!top.isNullOrBlank()) {
+                append(" • ")
+                append(getString(R.string.weekly_top_game, top))
+            }
+            append(" • ")
+            append(getString(R.string.weekly_goal, goal))
+        }
+        findViewById<TextView>(R.id.weeklyFoot).text = summary
+
+        val card = findViewById<View>(R.id.weeklyCard)
+        card.animate().cancel()
+        card.alpha = 0f
+        card.translationY = dp(16).toFloat()
+        card.animate().alpha(1f).translationY(0f).setDuration(320L)
+            .setInterpolator(DecelerateInterpolator()).start()
+    }
+
+    private fun animateValue(view: TextView, value: String) {
+        if (view.text.toString() == value) return
+        view.text = value
+        view.animate().cancel()
+        view.scaleX = 0.88f
+        view.scaleY = 0.88f
+        view.animate().scaleX(1f).scaleY(1f).setDuration(230L)
+            .setInterpolator(DecelerateInterpolator()).start()
+    }
+
+    /** Staggered reveal for the children of the page that is sliding in. */
+    private fun animatePageContent(pageView: View) {
+        val container: ViewGroup = when (pageView) {
+            is android.widget.ScrollView -> (pageView.getChildAt(0) as? ViewGroup) ?: return
+            is ViewGroup -> pageView
+            else -> return
+        }
+        val limit = minOf(container.childCount, 8)
+        for (index in 0 until limit) {
+            val child = container.getChildAt(index)
+            child.animate().cancel()
+            child.alpha = 0f
+            child.translationY = dp(16).toFloat()
+            child.animate().alpha(1f).translationY(0f)
+                .setStartDelay((index * 26).toLong())
+                .setDuration(300L)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+        }
+    }
+
     // -------------------------------------------------------------------- about
 
     private fun bindAbout() {
@@ -1625,7 +1932,15 @@ class MainActivity : Activity() {
     }
 
     private fun playSound(id: Int, volume: Float = 0.85f, rate: Float = 1f) {
-        if (id != 0) sounds?.play(id, volume, volume, 1, 0, rate.coerceIn(0.5f, 2f))
+        if (id == 0) return
+        val (volumeScale, rateScale) = when (Prefs.soundPack(this)) {
+            SOUND_SILENT -> return
+            SOUND_SOFT -> 0.6f to 0.9f
+            SOUND_ARCADE -> 1f to 1.32f
+            else -> 1f to 1f
+        }
+        val left = (volume * volumeScale).coerceIn(0f, 1f)
+        sounds?.play(id, left, left, 1, 0, (rate * rateScale).coerceIn(0.5f, 2f))
     }
 
     private fun tapFeedback() {

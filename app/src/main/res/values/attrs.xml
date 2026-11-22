@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="gbAccent" format="color" />
+    <attr name="gbAccentBright" format="color" />
+    <attr name="gbAccentSoft" format="color" />
+    <attr name="gbAurora1" format="color" />
+    <attr name="gbAurora2" format="color" />
+</resources>

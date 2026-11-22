@@ -28,7 +28,7 @@
                 android:layout_height="22dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_settings"
-                android:tint="@color/gb_accent_bright" />
+                android:tint="?attr/gbAccentBright" />
 
             <TextView
                 style="@style/GbTitle"
@@ -67,7 +67,7 @@
                     android:contentDescription="@string/premium_user"
                     android:padding="12dp"
                     android:src="@drawable/ic_user"
-                    android:tint="@color/gb_accent_bright" />
+                    android:tint="?attr/gbAccentBright" />
             </FrameLayout>
 
             <LinearLayout
@@ -122,7 +122,7 @@
                 android:contentDescription="@null"
                 android:padding="9dp"
                 android:src="@drawable/ic_speed"
-                android:tint="@color/gb_accent_bright" />
+                android:tint="?attr/gbAccentBright" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -170,7 +170,7 @@
                 android:contentDescription="@null"
                 android:padding="9dp"
                 android:src="@drawable/ic_bolt"
-                android:tint="@color/gb_accent_bright" />
+                android:tint="?attr/gbAccentBright" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -196,7 +196,7 @@
                 android:id="@+id/autoBoostSwitch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:thumbTint="@color/gb_accent_bright"
+                android:thumbTint="?attr/gbAccentBright"
                 android:trackTint="#552F8BFF" />
         </LinearLayout>
 
@@ -217,7 +217,7 @@
                 android:contentDescription="@null"
                 android:padding="9dp"
                 android:src="@drawable/ic_gamepad"
-                android:tint="@color/gb_accent_bright" />
+                android:tint="?attr/gbAccentBright" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -243,7 +243,7 @@
                 android:id="@+id/gameModeSwitch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:thumbTint="@color/gb_accent_bright"
+                android:thumbTint="?attr/gbAccentBright"
                 android:trackTint="#552F8BFF" />
         </LinearLayout>
 
@@ -264,7 +264,7 @@
                 android:contentDescription="@null"
                 android:padding="9dp"
                 android:src="@drawable/ic_bell"
-                android:tint="@color/gb_accent_bright" />
+                android:tint="?attr/gbAccentBright" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -290,7 +290,7 @@
                 android:id="@+id/notificationSwitch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:thumbTint="@color/gb_accent_bright"
+                android:thumbTint="?attr/gbAccentBright"
                 android:trackTint="#552F8BFF" />
         </LinearLayout>
 
@@ -314,7 +314,7 @@
                 android:contentDescription="@null"
                 android:padding="9dp"
                 android:src="@drawable/ic_layers"
-                android:tint="@color/gb_accent_bright" />
+                android:tint="?attr/gbAccentBright" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -365,7 +365,7 @@
                 android:contentDescription="@null"
                 android:padding="9dp"
                 android:src="@drawable/ic_network"
-                android:tint="@color/gb_accent_bright" />
+                android:tint="?attr/gbAccentBright" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -397,6 +397,236 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/rowProfiles"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card_soft"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="14dp">
+
+            <ImageView
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_icon_circle"
+                android:contentDescription="@null"
+                android:padding="9dp"
+                android:src="@drawable/ic_gamepad"
+                android:tint="?attr/gbAccentBright" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/GbRowTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profiles" />
+
+                <TextView
+                    style="@style/GbRowSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profiles_sub" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/profilesValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:text="@string/profiles_value_none"
+                android:textColor="?attr/gbAccentBright"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron"
+                android:tint="@color/gb_muted" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rowRefresh"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card_soft"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="10dp">
+
+            <ImageView
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_icon_circle"
+                android:contentDescription="@null"
+                android:padding="9dp"
+                android:src="@drawable/ic_speed"
+                android:tint="?attr/gbAccentBright" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/GbRowTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/refresh_lock" />
+
+                <TextView
+                    style="@style/GbRowSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/refresh_lock_sub" />
+            </LinearLayout>
+
+            <Switch
+                android:id="@+id/refreshLockSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:thumbTint="?attr/gbAccentBright"
+                android:trackTint="#552F8BFF" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rowAccent"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card_soft"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="14dp">
+
+            <ImageView
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_icon_circle"
+                android:contentDescription="@null"
+                android:padding="9dp"
+                android:src="@drawable/ic_layers"
+                android:tint="?attr/gbAccentBright" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/GbRowTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/accent_color" />
+
+                <TextView
+                    style="@style/GbRowSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/accent_color_sub" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/accentValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:text="@string/accent_blue"
+                android:textColor="?attr/gbAccentBright"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron"
+                android:tint="@color/gb_muted" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rowSound"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card_soft"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="14dp">
+
+            <ImageView
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_icon_circle"
+                android:contentDescription="@null"
+                android:padding="9dp"
+                android:src="@drawable/ic_bell"
+                android:tint="?attr/gbAccentBright" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/GbRowTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sound_pack" />
+
+                <TextView
+                    style="@style/GbRowSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sound_pack_sub" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/soundValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:text="@string/sound_neon"
+                android:textColor="?attr/gbAccentBright"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron"
+                android:tint="@color/gb_muted" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/rowPermissions"
             android:layout_width="match_parent"
             android:layout_height="66dp"
@@ -416,7 +646,7 @@
                 android:contentDescription="@null"
                 android:padding="9dp"
                 android:src="@drawable/ic_shield"
-                android:tint="@color/gb_accent_bright" />
+                android:tint="?attr/gbAccentBright" />
 
             <LinearLayout
                 android:layout_width="0dp"

@@ -10,6 +10,38 @@
         <item name="android:textColorPrimary">@color/gb_text</item>
         <item name="android:textColorSecondary">@color/gb_muted</item>
         <item name="materialButtonStyle">@style/GbPrimaryButton</item>
+        <item name="gbAccent">@color/gb_accent</item>
+        <item name="gbAccentBright">@color/gb_accent_bright</item>
+        <item name="gbAccentSoft">@color/gb_accent_soft</item>
+        <item name="gbAurora1">#59D8FF</item>
+        <item name="gbAurora2">#2F8BFF</item>
+    </style>
+
+    <style name="Theme.GameBooster.Violet" parent="Theme.GameBooster">
+        <item name="gbAccent">#A85CFF</item>
+        <item name="gbAccentBright">#D9A6FF</item>
+        <item name="gbAccentSoft">#E7CEFF</item>
+        <item name="gbAurora1">#C77DFF</item>
+        <item name="gbAurora2">#6B2BFF</item>
+        <item name="android:colorAccent">#A85CFF</item>
+    </style>
+
+    <style name="Theme.GameBooster.Emerald" parent="Theme.GameBooster">
+        <item name="gbAccent">#12C97B</item>
+        <item name="gbAccentBright">#5CFFC0</item>
+        <item name="gbAccentSoft">#A6FFDC</item>
+        <item name="gbAurora1">#5CFFC0</item>
+        <item name="gbAurora2">#0E8F5B</item>
+        <item name="android:colorAccent">#12C97B</item>
+    </style>
+
+    <style name="Theme.GameBooster.Ember" parent="Theme.GameBooster">
+        <item name="gbAccent">#FF7A3D</item>
+        <item name="gbAccentBright">#FFB36B</item>
+        <item name="gbAccentSoft">#FFD4AC</item>
+        <item name="gbAurora1">#FFB36B</item>
+        <item name="gbAurora2">#FF4D2E</item>
+        <item name="android:colorAccent">#FF7A3D</item>
     </style>
 
     <style name="GbTitle">
@@ -20,7 +52,7 @@
     </style>
 
     <style name="GbSectionTitle">
-        <item name="android:textColor">@color/gb_accent_bright</item>
+        <item name="android:textColor">?attr/gbAccentBright</item>
         <item name="android:textSize">12sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:letterSpacing">0.08</item>

@@ -106,7 +106,7 @@
                 android:paddingEnd="10dp"
                 android:paddingBottom="5dp"
                 android:text="@string/home_library"
-                android:textColor="@color/gb_accent_bright"
+                android:textColor="?attr/gbAccentBright"
                 android:textSize="10sp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -146,7 +146,7 @@
                         android:contentDescription="@string/boost"
                         android:padding="20dp"
                         android:src="@drawable/ic_gamepad"
-                        android:tint="@color/gb_accent_bright" />
+                        android:tint="?attr/gbAccentBright" />
                 </FrameLayout>
 
                 <TextView
@@ -166,7 +166,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:text="@string/tap_to_boost"
-                    android:textColor="@color/gb_accent_bright"
+                    android:textColor="?attr/gbAccentBright"
                     android:textSize="12sp" />
             </LinearLayout>
         </FrameLayout>
@@ -210,7 +210,7 @@
                     android:layout_height="19dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_bell"
-                    android:tint="@color/gb_accent_bright" />
+                    android:tint="?attr/gbAccentBright" />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -332,7 +332,7 @@
                         android:layout_height="16dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_ram"
-                        android:tint="@color/gb_accent_bright" />
+                        android:tint="?attr/gbAccentBright" />
 
                     <TextView
                         style="@style/GbLabel"
@@ -509,7 +509,7 @@
                         android:layout_height="16dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_network"
-                        android:tint="@color/gb_accent_bright" />
+                        android:tint="?attr/gbAccentBright" />
 
                     <TextView
                         style="@style/GbLabel"

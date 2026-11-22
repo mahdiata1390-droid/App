@@ -56,6 +56,6 @@ jobs:
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
-          name: game-booster-release-2.1.0
+          name: game-booster-release-2.2.0
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error

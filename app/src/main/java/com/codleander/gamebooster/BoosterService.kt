@@ -55,6 +55,8 @@ class BoosterService : Service() {
     private var profileAwake = true
     private var profileBrightness = false
     private var profileHud = true
+    private var profileRefresh = false
+    private var refreshLockedByService = false
     private var sessionPausedAt = 0L
     private var dndChangedByService = false
     private var dndChangedByUser = false
@@ -161,6 +163,8 @@ class BoosterService : Service() {
                 profileAwake = intent?.getBooleanExtra("profile_awake", true) ?: true
                 profileBrightness = intent?.getBooleanExtra("profile_brightness", false) ?: false
                 profileHud = intent?.getBooleanExtra("profile_hud", true) ?: true
+                profileRefresh = intent?.getBooleanExtra("profile_refresh", false) ?: false
+                refreshLockedByService = false
                 gameForegroundSeen = false
                 dndChangedByService = false
                 dndChangedByUser = false
@@ -251,6 +255,16 @@ class BoosterService : Service() {
                     }
                 }
 
+                if (profileRefresh && RefreshRateHelper.canControl(this)) {
+                    val targetHz = RefreshRateHelper.maxHz(this)
+                    if (targetHz != null && RefreshRateHelper.apply(this, targetHz)) {
+                        refreshLockedByService = true
+                        runtimeEditor
+                            .putBoolean("refresh_changed", true)
+                            .putFloat("refresh_locked_hz", targetHz)
+                    }
+                }
+
                 runtimeEditor.apply()
                 if (targetPackage != null && profileHud) {
                     runCatching { showHud() }
@@ -270,7 +284,8 @@ class BoosterService : Service() {
         val dndRestored = restoreDnd()
         val timeoutRestored = restoreScreenTimeout()
         val brightnessRestored = restoreBrightness()
-        if (dndRestored && timeoutRestored && brightnessRestored) {
+        val refreshRestored = restoreRefreshRate()
+        if (dndRestored && timeoutRestored && brightnessRestored && refreshRestored) {
             getSharedPreferences("booster_runtime", MODE_PRIVATE).edit().clear().apply()
         } else {
             persistRuntimeHeartbeat()
@@ -465,7 +480,8 @@ class BoosterService : Service() {
         val dndRestored = restoreDnd()
         val timeoutRestored = restoreScreenTimeout()
         val brightnessRestored = restoreBrightness()
-        if (!dndRestored || !timeoutRestored || !brightnessRestored) {
+        val refreshRestored = restoreRefreshRate()
+        if (!dndRestored || !timeoutRestored || !brightnessRestored || !refreshRestored) {
             // Keep the active session and runtime recovery markers intact.
             // onDestroy() will get another chance to restore them.
             persistRuntimeHeartbeat()
@@ -483,6 +499,8 @@ class BoosterService : Service() {
         lastForegroundEventAt = 0L
         sessionStartBrightness = -1f
         brightnessChangedByService = false
+        profileRefresh = false
+        refreshLockedByService = false
         sessionStartScreenTimeout = -1L
         screenTimeoutChangedByService = false
         dndChangedByService = false
@@ -582,6 +600,13 @@ class BoosterService : Service() {
             sessionStartBrightness = -1f
             brightnessChangedByService = false
         }
+        return restored
+    }
+
+    private fun restoreRefreshRate(): Boolean {
+        if (!refreshLockedByService) return true
+        val restored = RefreshRateHelper.restore(this)
+        if (restored) refreshLockedByService = false
         return restored
     }
 

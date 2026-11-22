@@ -54,6 +54,24 @@ object Prefs {
         prefs(context).edit().putBoolean("fps_hud", enabled).apply()
     }
 
+    fun accent(context: Context): Int = prefs(context).getInt("accent", 0)
+
+    fun setAccent(context: Context, accent: Int) {
+        prefs(context).edit().putInt("accent", accent).apply()
+    }
+
+    fun soundPack(context: Context): Int = prefs(context).getInt("sound_pack", 0)
+
+    fun setSoundPack(context: Context, pack: Int) {
+        prefs(context).edit().putInt("sound_pack", pack).apply()
+    }
+
+    fun refreshLock(context: Context): Boolean = prefs(context).getBoolean("refresh_lock", false)
+
+    fun setRefreshLock(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("refresh_lock", enabled).apply()
+    }
+
     fun displayName(context: Context): String =
         prefs(context).getString("display_name", "")?.trim() ?: ""
 

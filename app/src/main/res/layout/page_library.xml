@@ -130,7 +130,7 @@
                 android:alpha="0.5"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_gamepad"
-                android:tint="@color/gb_accent_bright" />
+                android:tint="?attr/gbAccentBright" />
 
             <TextView
                 android:layout_width="wrap_content"

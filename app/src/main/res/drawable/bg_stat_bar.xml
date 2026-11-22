@@ -10,7 +10,7 @@
         <clip>
             <shape android:shape="rectangle">
                 <corners android:radius="4dp" />
-                <gradient android:angle="0" android:startColor="#2F8BFF" android:endColor="#7FE3FF" />
+                <gradient android:angle="0" android:startColor="?attr/gbAccent" android:endColor="?attr/gbAccentBright" />
             </shape>
         </clip>
     </item>

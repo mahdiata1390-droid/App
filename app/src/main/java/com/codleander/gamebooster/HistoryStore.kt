@@ -15,6 +15,15 @@ data class SessionRecord(
     val isBoost: Boolean
 )
 
+data class WeeklyReport(
+    val boosts: Int,
+    val previousBoosts: Int,
+    val playMs: Long,
+    val freedMb: Int,
+    val activeDays: Int,
+    val topGame: String?
+)
+
 object HistoryStore {
 
     private const val FILE = "booster_history"
@@ -89,6 +98,33 @@ object HistoryStore {
 
     fun recent(context: Context, limit: Int): List<SessionRecord> =
         read(context).take(limit)
+
+    /** Aggregates the last seven days and the seven days before that. */
+    fun weeklyReport(context: Context, now: Long): WeeklyReport {
+        val weekMs = 7L * 24L * 60L * 60L * 1000L
+        val since = now - weekMs
+        val records = read(context)
+        val current = records.filter { it.start in since..now }
+        val previous = records.filter { it.start in (since - weekMs)..since }
+        val zone = java.time.ZoneId.systemDefault()
+        val activeDays = current
+            .map { java.time.Instant.ofEpochMilli(it.start).atZone(zone).toLocalDate() }
+            .distinct()
+            .size
+        val topGame = current
+            .filter { !it.isBoost }
+            .groupBy { it.label }
+            .maxByOrNull { entry -> entry.value.sumOf { it.durationMs } }
+            ?.key
+        return WeeklyReport(
+            boosts = current.count { it.isBoost },
+            previousBoosts = previous.count { it.isBoost },
+            playMs = current.filter { !it.isBoost }.sumOf { it.durationMs },
+            freedMb = current.filter { it.isBoost }.sumOf { it.freedMb },
+            activeDays = activeDays,
+            topGame = topGame
+        )
+    }
 
     /** Play minutes per evenly sized bucket across [since, until]. */
     fun buckets(context: Context, since: Long, until: Long, count: Int): FloatArray {

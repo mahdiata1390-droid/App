@@ -27,7 +27,7 @@
             android:layout_height="23dp"
             android:contentDescription="@string/nav_home"
             android:src="@drawable/ic_home"
-            android:tint="@color/gb_accent_bright" />
+            android:tint="?attr/gbAccentBright" />
 
         <TextView
             android:id="@+id/navHomeLabel"
@@ -35,7 +35,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="@string/nav_home"
-            android:textColor="@color/gb_accent_bright"
+            android:textColor="?attr/gbAccentBright"
             android:textSize="10sp" />
     </LinearLayout>
 

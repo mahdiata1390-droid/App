@@ -23,6 +23,13 @@
         android:background="@drawable/bg_backdrop_scrim"
         android:importantForAccessibility="no" />
 
+    <com.codleander.gamebooster.AuroraBackgroundView
+        android:id="@+id/aurora"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.85"
+        android:importantForAccessibility="no" />
+
     <FrameLayout
         android:id="@+id/pageHost"
         android:layout_width="match_parent"

@@ -40,7 +40,7 @@
                 android:contentDescription="@string/app_name"
                 android:padding="28dp"
                 android:src="@drawable/ic_gamepad"
-                android:tint="@color/gb_accent_bright" />
+                android:tint="?attr/gbAccentBright" />
         </FrameLayout>
 
         <TextView
@@ -65,7 +65,7 @@
             android:shadowDy="0"
             android:shadowRadius="18"
             android:text="@string/splash_booster"
-            android:textColor="@color/gb_accent_bright"
+            android:textColor="?attr/gbAccentBright"
             android:textSize="42sp" />
 
         <TextView

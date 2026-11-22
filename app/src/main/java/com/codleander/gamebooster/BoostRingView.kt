@@ -23,6 +23,8 @@ class BoostRingView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
     private val density = resources.displayMetrics.density
+    private val accentBase = Accent.base(context)
+    private val accentBright = Accent.bright(context)
 
     private var progress: Float = 1f
         set(value) {
@@ -59,7 +61,7 @@ class BoostRingView @JvmOverloads constructor(
     private val scannerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
-        color = ContextCompat.getColor(context, R.color.gb_accent_bright)
+        color = accentBright
     }
     private val tickPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         strokeCap = Paint.Cap.ROUND
@@ -144,9 +146,9 @@ class BoostRingView @JvmOverloads constructor(
         val gradient = SweepGradient(
             cx, cy,
             intArrayOf(
-                ContextCompat.getColor(context, R.color.gb_accent),
-                ContextCompat.getColor(context, R.color.gb_accent_bright),
-                ContextCompat.getColor(context, R.color.gb_accent)
+                accentBase,
+                accentBright,
+                accentBase
             ),
             floatArrayOf(0f, 0.45f, 1f)
         )
@@ -171,7 +173,11 @@ class BoostRingView @JvmOverloads constructor(
         for (index in 0 until tickCount) {
             val angle = Math.toRadians(index * (360.0 / tickCount) - 90.0)
             val lit = index / tickCount.toFloat() <= progress
-            tickPaint.color = if (lit) 0xCC2F8BFF.toInt() else 0x292F8BFF
+            tickPaint.color = if (lit) {
+                (accentBase and 0x00FFFFFF) or (0xCC shl 24)
+            } else {
+                (accentBase and 0x00FFFFFF) or (0x29 shl 24)
+            }
             tickPaint.strokeWidth = (if (lit) 1.8f else 1.1f) * density
             val c = cos(angle).toFloat()
             val s = sin(angle).toFloat()

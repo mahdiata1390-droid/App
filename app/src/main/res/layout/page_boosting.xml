@@ -89,7 +89,7 @@
                                 android:contentDescription="@string/boost"
                                 android:padding="18dp"
                                 android:src="@drawable/ic_rocket"
-                                android:tint="@color/gb_accent_bright" />
+                                android:tint="?attr/gbAccentBright" />
                         </FrameLayout>
 
                         <TextView
@@ -112,7 +112,7 @@
                     android:layout_marginTop="4dp"
                     android:gravity="center"
                     android:text="@string/optimizing_device"
-                    android:textColor="@color/gb_accent_soft"
+                    android:textColor="?attr/gbAccentSoft"
                     android:textSize="13sp" />
 
                 <LinearLayout
