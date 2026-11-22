@@ -670,7 +670,7 @@ class BoosterService : Service() {
         }
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_lightning)
-            .setContentTitle("Game Booster")
+            .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
              .setOngoing(true)
             .setContentIntent(pending)

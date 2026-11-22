@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Game Booster</string>
+    <string name="app_name">FLASH BOOSTER</string>
     <string name="tagline">Play Better • Faster • Longer</string>
     <string name="loading">Loading…</string>
 
@@ -74,7 +74,7 @@
     <string name="language">Language</string>
     <string name="language_sub">English / فارسی</string>
     <string name="permission_center">Permission Center</string>
-    <string name="permission_center_sub">Manage the access Game Booster needs</string>
+    <string name="permission_center_sub">Manage the access FLASH BOOSTER needs</string>
     <string name="about">About</string>
 
     <!-- Permissions -->
@@ -129,7 +129,7 @@
     <string name="copyright">© 2026 Codleander\nAll rights reserved.</string>
 
     <!-- Notification -->
-    <string name="notif_channel_name">Game Booster Session</string>
+    <string name="notif_channel_name">FLASH BOOSTER Session</string>
     <string name="notif_session_active">Game session active</string>
     <string name="notif_ready">Game session monitor ready</string>
     <string name="notif_stop">STOP</string>
@@ -186,7 +186,7 @@
     <string name="dnd_off">DND off</string>
     <string name="dnd_need_access">Grant access</string>
     <string name="dnd_access_needed">Allow Do Not Disturb access, then try again</string>
-    <string name="dnd_access_hint">Enable Game Booster in the Do Not Disturb access list</string>
+    <string name="dnd_access_hint">Enable FLASH BOOSTER in the Do Not Disturb access list</string>
     <string name="dnd_on_toast">Do Not Disturb is on</string>
     <string name="dnd_off_toast">Do Not Disturb is off</string>
     <string name="perm_dnd">Do Not Disturb Access</string>
@@ -194,7 +194,7 @@
 
     <!-- In-game HUD -->
     <string name="hud_title">GAME TOOLBOX</string>
-    <string name="hud_bubble_desc">Game Booster toolbox</string>
+    <string name="hud_bubble_desc">FLASH BOOSTER toolbox</string>
     <string name="hud_drag_hint">Drag to move</string>
     <string name="hud_close">Close toolbox</string>
     <string name="hud_free_ram">FREE RAM</string>
@@ -263,6 +263,6 @@
     <string name="weekly_active_days">%1$d active days</string>
     <string name="weekly_goal">Weekly goal %1$d%%</string>
     <string name="integrity_title">Modified copy detected</string>
-    <string name="integrity_message">The signature of this copy does not match the official Game Booster, so it will not run. Install the official release instead.</string>
+    <string name="integrity_message">The signature of this copy does not match the official FLASH BOOSTER, so it will not run. Install the official release instead.</string>
     <string name="integrity_close">Close</string>
 </resources>

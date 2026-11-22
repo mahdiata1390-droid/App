@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">گیم بوستر</string>
+    <string name="app_name">FLASH BOOSTER</string>
     <string name="tagline">بهتر بازی کن • سریع‌تر • طولانی‌تر</string>
     <string name="loading">در حال بارگذاری…</string>
 
@@ -121,7 +121,7 @@
     <string name="about_feature_4">ساخته‌شده با ♥ برای گیمرها</string>
     <string name="copyright">© ۲۰۲۶ Codleander\nتمام حقوق محفوظ است.</string>
 
-    <string name="notif_channel_name">جلسه گیم بوستر</string>
+    <string name="notif_channel_name">جلسه FLASH BOOSTER</string>
     <string name="notif_session_active">جلسه بازی فعال است</string>
     <string name="notif_ready">آماده پایش جلسه بازی</string>
     <string name="notif_stop">پایان</string>
@@ -176,14 +176,14 @@
     <string name="dnd_off">مزاحمت آزاد</string>
     <string name="dnd_need_access">دسترسی بده</string>
     <string name="dnd_access_needed">دسترسی «مزاحمت نکن» را بده و دوباره امتحان کن</string>
-    <string name="dnd_access_hint">گیم بوستر را در لیست دسترسی مزاحمت‌نکن فعال کن</string>
+    <string name="dnd_access_hint">FLASH BOOSTER را در لیست دسترسی مزاحمت‌نکن فعال کن</string>
     <string name="dnd_on_toast">حالت مزاحمت‌نکن روشن شد</string>
     <string name="dnd_off_toast">حالت مزاحمت‌نکن خاموش شد</string>
     <string name="perm_dnd">دسترسی مزاحمت‌نکن</string>
     <string name="perm_dnd_sub">تا حالت بازی واقعاً مزاحمت‌ها را قطع کند</string>
 
     <string name="hud_title">جعبه ابزار بازی</string>
-    <string name="hud_bubble_desc">جعبه ابزار گیم بوستر</string>
+    <string name="hud_bubble_desc">جعبه ابزار FLASH BOOSTER</string>
     <string name="hud_drag_hint">برای جابه‌جایی بکش</string>
     <string name="hud_close">بستن جعبه ابزار</string>
     <string name="hud_free_ram">آزادسازی رم</string>
@@ -252,6 +252,6 @@
     <string name="weekly_active_days">%1$d روز فعال</string>
     <string name="weekly_goal">هدف هفتگی %1$d%%</string>
     <string name="integrity_title">نسخه‌ی دستکاری‌شده</string>
-    <string name="integrity_message">امضای دیجیتال این نسخه با گیم بوستر رسمی یکی نیست، به همین دلیل اجرا نمی‌شود. نسخه‌ی رسمی را نصب کن.</string>
+    <string name="integrity_message">امضای دیجیتال این نسخه با FLASH BOOSTER رسمی یکی نیست، به همین دلیل اجرا نمی‌شود. نسخه‌ی رسمی را نصب کن.</string>
     <string name="integrity_close">بستن</string>
 </resources>
