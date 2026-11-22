@@ -1,5 +1,6 @@
 package com.codleander.gamebooster
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.drawable.Icon
@@ -35,10 +36,18 @@ class BoosterTileService : TileService() {
             launch,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        collapseAndLaunch(launch, pending)
+    }
+
+    /**
+     * Android 14 replaced the Intent overload with a PendingIntent one, but that overload does
+     * not exist on API 26-33, so older devices must keep using the deprecated call.
+     */
+    @SuppressLint("StartActivityAndCollapseDeprecated")
+    private fun collapseAndLaunch(launch: Intent, pending: PendingIntent) {
         if (Build.VERSION.SDK_INT >= 34) {
             startActivityAndCollapse(pending)
         } else {
-            @Suppress("DEPRECATION")
             startActivityAndCollapse(launch)
         }
     }
