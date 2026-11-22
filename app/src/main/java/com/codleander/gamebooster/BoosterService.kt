@@ -16,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.Button
 import android.widget.Toast
 import android.graphics.drawable.GradientDrawable
+import android.media.MediaPlayer
 import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,11 +33,13 @@ class BoosterService : Service() {
         private const val POLL_MS = 2000L
         private const val SESSION_MAX_MS = 24L * 60L * 60L * 1000L
         private const val FOREGROUND_MISSING_GRACE_MS = 15_000L
+        private const val AMBIENT_VOLUME = 0.3f
     }
 
     private val handler = Handler(Looper.getMainLooper())
     private var targetPackage: String? = null
     private var hud: BoosterHud? = null
+    private var ambient: MediaPlayer? = null
     private var fpsMonitor: FpsMonitor? = null
     private var lastFps = 0f
     private var sessionStartedAt = 0L
@@ -270,6 +273,7 @@ class BoosterService : Service() {
                 }
 
                 runtimeEditor.apply()
+                startAmbient()
                 if (targetPackage != null && profileHud) {
                     runCatching { showHud() }
                 }
@@ -283,6 +287,7 @@ class BoosterService : Service() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         hideHud()
+        stopAmbient()
         persistRuntimeHeartbeat()
         saveSessionHistory()
         val dndRestored = restoreDnd()
@@ -391,6 +396,28 @@ class BoosterService : Service() {
         hud = null
     }
 
+    /** The ambient loop belongs to the session: it starts with it and stops with it. */
+    private fun startAmbient() {
+        stopAmbient()
+        if (!Prefs.ambient(this)) return
+        val pack = Prefs.soundPack(this)
+        if (!SoundPacks.hasAudio(pack)) return
+        runCatching {
+            ambient = MediaPlayer.create(this, SoundPacks.ambient(pack))?.apply {
+                isLooping = true
+                setVolume(AMBIENT_VOLUME, AMBIENT_VOLUME)
+                start()
+            }
+        }.onFailure { ambient = null }
+    }
+
+    private fun stopAmbient() {
+        val player = ambient ?: return
+        ambient = null
+        runCatching { player.stop() }
+        runCatching { player.release() }
+    }
+
     private val hudTick = object : Runnable {
         override fun run() {
             val current = hud ?: return
@@ -483,6 +510,7 @@ class BoosterService : Service() {
     private fun finishCurrentSessionForReplacement(): Boolean {
         handler.removeCallbacks(poller)
         hideHud()
+        stopAmbient()
         saveSessionHistory()
 
         val dndRestored = restoreDnd()

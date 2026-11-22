@@ -29,6 +29,15 @@ FLASH BOOSTER wordmark and renders every derived asset: the adaptive background/
 all mipmap densities, the legacy and round launcher icons, and the 512 px store icons in `art/`.
 Edit the artwork or the script, never the generated PNGs.
 
+## Bundled assets
+- `tools/make_art.py` renders eight full-resolution (1080×2400) backdrops into
+  `res/drawable-nodpi/`; they are selectable in Settings → Appearance → Backdrop.
+- `tools/make_sounds.py` synthesises the three sound packs (four effects each) plus a 50-second
+  ambient loop per pack, written as 16-bit 44.1 kHz stereo PCM. The fourth pack, Silent, has no
+  audio. Ambient audio is opt-in in Settings and plays only while a session runs.
+- `res/font/` holds Vazirmatn (SIL Open Font License 1.1) for both Latin and Persian text.
+- Together these are what make the release APK about 61 MB; nothing in it is padding.
+
 ## Store release
 `bash tools/build_release.sh` builds the signed release APK for Myket into
 `dist/flash-booster-1.0.0.apk`. The same signed file is committed as

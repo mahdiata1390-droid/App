@@ -1,7 +1,8 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <style name="Theme.GameBooster" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:fontFamily">sans-serif</item>
+        <!-- Vazirmatn (SIL OFL) covers Latin and Persian, so both languages share one face. -->
+        <item name="android:fontFamily">@font/vazirmatn_regular</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">@color/gb_background</item>
         <item name="android:navigationBarColor">@color/gb_background</item>
@@ -48,7 +49,7 @@
         <item name="android:textColor">@color/gb_text</item>
         <item name="android:textSize">22sp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">@font/vazirmatn_medium</item>
     </style>
 
     <style name="GbSectionTitle">
@@ -69,7 +70,7 @@
         <item name="android:textColor">@color/gb_text</item>
         <item name="android:textSize">22sp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">@font/vazirmatn_medium</item>
     </style>
 
     <style name="GbSub">

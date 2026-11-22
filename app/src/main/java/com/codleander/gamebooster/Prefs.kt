@@ -66,6 +66,21 @@ object Prefs {
         prefs(context).edit().putInt("sound_pack", pack).apply()
     }
 
+    fun backdrop(context: Context): Int =
+        prefs(context).getInt("backdrop", Backdrops.DEFAULT).coerceIn(0, Backdrops.count - 1)
+
+    fun setBackdrop(context: Context, index: Int) {
+        prefs(context).edit()
+            .putInt("backdrop", index.coerceIn(0, Backdrops.count - 1))
+            .apply()
+    }
+
+    fun ambient(context: Context): Boolean = prefs(context).getBoolean("ambient_audio", false)
+
+    fun setAmbient(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("ambient_audio", enabled).apply()
+    }
+
     fun refreshLock(context: Context): Boolean = prefs(context).getBoolean("refresh_lock", false)
 
     fun setRefreshLock(context: Context, enabled: Boolean) {

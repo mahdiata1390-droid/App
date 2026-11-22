@@ -101,10 +101,7 @@ class MainActivity : Activity() {
     private var backdropPaused = false
 
     private var sounds: SoundPool? = null
-    private var tapSound = 0
-    private var successSound = 0
-    private var boostSound = 0
-    private var errorSound = 0
+    private val soundIds = Array(SoundPacks.SILENT) { IntArray(4) }
 
     private val navPages = listOf(PAGE_HOME, PAGE_LIBRARY, PAGE_HISTORY, PAGE_SETTINGS)
     private val navIconIds = listOf(R.id.navHomeIcon, R.id.navGamesIcon, R.id.navHistoryIcon, R.id.navSettingsIcon)
@@ -394,7 +391,7 @@ class MainActivity : Activity() {
             refreshQuickActions()
             return
         }
-        playSound(if (result) successSound else tapSound, 0.7f)
+        playSound(if (result) SoundPacks.SUCCESS else SoundPacks.TAP, 0.7f)
         toast(getString(if (result) R.string.dnd_on_toast else R.string.dnd_off_toast))
         refreshQuickActions()
     }
@@ -402,7 +399,7 @@ class MainActivity : Activity() {
     private fun toggleFpsQuick() {
         val enabled = !Prefs.fpsHud(this)
         Prefs.setFpsHud(this, enabled)
-        playSound(tapSound, 0.6f)
+        playSound(SoundPacks.TAP, 0.6f)
         refreshQuickActions()
         toast(getString(if (enabled) R.string.fps_hud_enabled else R.string.fps_hud_disabled))
         if (activeBoost() != null) {
@@ -778,7 +775,7 @@ class MainActivity : Activity() {
             return
         }
         selectedGame = game
-        playSound(tapSound, 0.7f)
+        playSound(SoundPacks.TAP, 0.7f)
         updateHomeChip()
         refreshHomeStatus()
         if (Prefs.autoBoost(this)) {
@@ -826,7 +823,7 @@ class MainActivity : Activity() {
         selectedGame = game ?: selectedGame
         showPage(PAGE_BOOSTING)
         feedback(true)
-        playSound(boostSound, 0.9f)
+        playSound(SoundPacks.BOOST, 0.9f)
         vibratePattern(0L, 26L, 60L, 40L)
 
         val ring = findViewById<BoostRingView>(R.id.boostRing)
@@ -869,7 +866,7 @@ class MainActivity : Activity() {
                         if (!boostCancelled) {
                             setStepState(step, STEP_DONE)
                             animateBoostPercent((step + 1) * 25)
-                            playSound(tapSound, 0.4f, 1.45f)
+                            playSound(SoundPacks.TAP, 0.4f, 1.45f)
                             vibrate(12L)
                         }
                     }
@@ -1189,23 +1186,30 @@ class MainActivity : Activity() {
         val profilesRow = findViewById<View>(R.id.rowProfiles)
         val accentRow = findViewById<View>(R.id.rowAccent)
         val soundRow = findViewById<View>(R.id.rowSound)
+        val backdropRow = findViewById<View>(R.id.rowBackdrop)
         profilesRow.setOnClickListener { tapFeedback(); openGameProfiles() }
         accentRow.setOnClickListener { tapFeedback(); chooseAccent() }
         soundRow.setOnClickListener { tapFeedback(); chooseSoundPack() }
+        backdropRow.setOnClickListener { tapFeedback(); chooseBackdrop() }
         findViewById<Switch>(R.id.refreshLockSwitch).setOnCheckedChangeListener { _, checked ->
             if (syncingToggles) return@setOnCheckedChangeListener
             toggleRefreshLock(checked)
         }
+        findViewById<Switch>(R.id.ambientSwitch).setOnCheckedChangeListener { _, checked ->
+            if (syncingToggles) return@setOnCheckedChangeListener
+            Prefs.setAmbient(this, checked)
+            playSound(SoundPacks.TAP, 0.6f)
+        }
         pressFeedback(
             profile, boostMode, appearance, language, permissions,
-            profilesRow, accentRow, soundRow
+            profilesRow, accentRow, soundRow, backdropRow
         )
 
         val autoBoost = findViewById<Switch>(R.id.autoBoostSwitch)
         autoBoost.setOnCheckedChangeListener { _, checked ->
             if (syncingToggles) return@setOnCheckedChangeListener
             Prefs.setAutoBoost(this, checked)
-            playSound(tapSound, 0.6f)
+            playSound(SoundPacks.TAP, 0.6f)
         }
         val gameMode = findViewById<Switch>(R.id.gameModeSwitch)
         gameMode.setOnCheckedChangeListener { _, checked ->
@@ -1268,6 +1272,7 @@ class MainActivity : Activity() {
         findViewById<Switch>(R.id.gameModeSwitch).isChecked = Prefs.gameMode(this)
         findViewById<Switch>(R.id.notificationSwitch).isChecked =
             Prefs.notifications(this) && hasNotificationPermission()
+        findViewById<Switch>(R.id.ambientSwitch).isChecked = Prefs.ambient(this)
         syncingToggles = false
     }
 
@@ -1342,10 +1347,24 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.root).setBackgroundResource(
             if (amoled) R.drawable.bg_amoled else R.drawable.bg_app
         )
-        findViewById<ImageView>(R.id.backdrop).alpha = if (amoled) 0.22f else 0.55f
+        val backdropIndex = Prefs.backdrop(this)
+        val customWallpaper = backdropIndex != Backdrops.DEFAULT
+        val backdrop = findViewById<ImageView>(R.id.backdrop)
+        backdrop.setImageResource(Backdrops.drawable(backdropIndex))
+        backdrop.alpha = when {
+            customWallpaper -> if (amoled) 0.62f else 0.9f
+            amoled -> 0.22f
+            else -> 0.55f
+        }
         aurora = findViewById(R.id.aurora)
         aurora?.setPalette(Accent.aurora(this), Accent.auroraDeep(this))
-        aurora?.alpha = if (amoled) 0.45f else 0.72f
+        // A chosen wallpaper is the subject, so the moving aurora steps back instead of
+        // washing it out.
+        aurora?.alpha = when {
+            customWallpaper -> 0.35f
+            amoled -> 0.45f
+            else -> 0.72f
+        }
     }
 
     // --------------------------------------------------------------- permissions
@@ -1734,6 +1753,8 @@ class MainActivity : Activity() {
             }
         findViewById<TextView>(R.id.accentValue).setText(accentLabelRes(Prefs.accent(this)))
         findViewById<TextView>(R.id.soundValue).setText(soundLabelRes(Prefs.soundPack(this)))
+        findViewById<TextView>(R.id.backdropValue).text =
+            Backdrops.label(this, Prefs.backdrop(this))
         syncingToggles = true
         findViewById<Switch>(R.id.refreshLockSwitch).isChecked = Prefs.refreshLock(this)
         syncingToggles = false
@@ -1751,6 +1772,21 @@ class MainActivity : Activity() {
         SOUND_ARCADE -> R.string.sound_arcade
         SOUND_SILENT -> R.string.sound_silent
         else -> R.string.sound_neon
+    }
+
+    private fun chooseBackdrop() {
+        val labels = Array(Backdrops.count) { index -> Backdrops.label(this, index) }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.backdrop)
+            .setSingleChoiceItems(labels, Prefs.backdrop(this)) { dialog, which ->
+                Prefs.setBackdrop(this, which)
+                dialog.dismiss()
+                applyAppearance()
+                refreshSettingValues()
+                tapFeedback()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun chooseAccent() {
@@ -1785,7 +1821,7 @@ class MainActivity : Activity() {
                 Prefs.setSoundPack(this, which)
                 findViewById<TextView>(R.id.soundValue).setText(soundLabelRes(which))
                 dialog.dismiss()
-                playSound(successSound, 0.8f)
+                playSound(SoundPacks.SUCCESS, 0.8f)
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
@@ -1979,28 +2015,37 @@ class MainActivity : Activity() {
     private fun initSounds() {
         sounds = runCatching {
             SoundPool.Builder().setMaxStreams(4).build().also { pool ->
-                tapSound = pool.load(this, R.raw.sfx_tap, 1)
-                successSound = pool.load(this, R.raw.sfx_success, 1)
-                boostSound = pool.load(this, R.raw.sfx_boost, 1)
-                errorSound = pool.load(this, R.raw.sfx_error, 1)
+                for (pack in SoundPacks.NEON until SoundPacks.SILENT) {
+                    val effects = SoundPacks.effects(pack)
+                    for (index in effects.indices) {
+                        soundIds[pack][index] = pool.load(this, effects[index], 1)
+                    }
+                }
             }
         }.getOrNull()
     }
 
-    private fun playSound(id: Int, volume: Float = 0.85f, rate: Float = 1f) {
-        if (id == 0) return
-        val (volumeScale, rateScale) = when (Prefs.soundPack(this)) {
-            SOUND_SILENT -> return
-            SOUND_SOFT -> 0.6f to 0.9f
-            SOUND_ARCADE -> 1f to 1.32f
+    /**
+     * Plays one of the four interface effects from the pack the user picked. Both the file and
+     * the character of the sound (volume, pitch) belong to that pack, so the selection is
+     * audible rather than only stored.
+     */
+    private fun playSound(effect: Int, volume: Float = 0.85f, rate: Float = 1f) {
+        val pack = Prefs.soundPack(this)
+        if (!SoundPacks.hasAudio(pack)) return
+        val (volumeScale, rateScale) = when (pack) {
+            SoundPacks.SOFT -> 0.6f to 0.9f
+            SoundPacks.ARCADE -> 1f to 1.32f
             else -> 1f to 1f
         }
+        val id = soundIds.getOrNull(pack)?.getOrNull(effect) ?: 0
+        if (id == 0) return
         val left = (volume * volumeScale).coerceIn(0f, 1f)
         sounds?.play(id, left, left, 1, 0, (rate * rateScale).coerceIn(0.5f, 2f))
     }
 
     private fun tapFeedback() {
-        playSound(tapSound, 0.5f)
+        playSound(SoundPacks.TAP, 0.5f)
         vibrate(9L)
     }
 
@@ -2068,12 +2113,12 @@ class MainActivity : Activity() {
     }
 
     private fun feedback(strong: Boolean) {
-        playSound(if (strong) successSound else tapSound)
+        playSound(if (strong) SoundPacks.SUCCESS else SoundPacks.TAP)
         vibrate(if (strong) 30L else 16L)
     }
 
     private fun successFeedback() {
-        playSound(successSound, 0.95f)
+        playSound(SoundPacks.SUCCESS, 0.95f)
         vibratePattern(0L, 30L, 50L, 22L, 40L, 55L)
     }
 

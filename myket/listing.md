@@ -33,6 +33,8 @@ Features
 - Keep-awake and brightness lock while playing
 - Session timer, history and a weekly report
 - Home-screen widget and quick-settings tile
+- Eight full-resolution backdrops (aurora, ember, emerald circuit, cyber grid, storm, frost, nebula, sunset)
+- Three sound packs plus optional ambient music during a session, and a comfortable Persian typeface
 - Neon dark theme, AMOLED black option and Persian / English interface
 
 Good to know
@@ -54,6 +56,8 @@ Good to know
 - روشن ماندن صفحه و قفل روشنایی در طول بازی
 - زمان‌سنج جلسه، تاریخچه و گزارش هفتگی
 - ویجت صفحه اصلی و کلید تنظیمات سریع
+- هشت پس‌زمینه تمام‌رزولوشن (شفق، اخگر، مدار زمردی، شبکه سایبری، طوفان، یخبندان، سحابی، غروب)
+- سه بسته صدای متفاوت به‌همراه موسیقی محیطی اختیاری در طول جلسه و فونت فارسی خوانا
 - تم تیره نئونی، حالت مشکی AMOLED و رابط فارسی / انگلیسی
 
 نکته‌های مهم
@@ -63,8 +67,8 @@ Good to know
 - روی اندروید ۸.۰ (API 26) و بالاتر اجرا می‌شود. بدون تبلیغ، بدون حساب کاربری و بدون پشتیبان‌گیری ابری از داده‌های جلسه.
 
 ## Release notes 1.0.0
-- English: `First public release of FLASH BOOSTER. Game library with automatic detection, one-tap boost with a real freed-RAM report, per-game profiles, in-game floating toolbox, DND game mode, brightness and refresh-rate lock, live telemetry, session history and weekly report, home-screen widget and quick-settings tile, Persian and English interface.`
-- Persian: `اولین نسخه انتشار عمومی فلش بوستر. کتابخانه بازی با شناسایی خودکار، بوست یک‌لمسی با گزارش واقعی رم آزادشده، پروفایل اختصاصی هر بازی، جعبه ابزار شناور داخل بازی، حالت مزاحمت‌نکن، قفل روشنایی و نرخ تازه‌سازی، نمایش زنده وضعیت، تاریخچه جلسات و گزارش هفتگی، ویجت صفحه اصلی و کلید تنظیمات سریع، رابط فارسی و انگلیسی.`
+- English: `First public release of FLASH BOOSTER. Game library with automatic detection, one-tap boost with a real freed-RAM report, per-game profiles, in-game floating toolbox, DND game mode, brightness and refresh-rate lock, live telemetry, session history and weekly report, home-screen widget and quick-settings tile. Ships eight full-resolution backdrops, three sound packs with optional ambient music, and complete Persian and English interfaces.`
+- Persian: `اولین نسخه انتشار عمومی فلش بوستر. کتابخانه بازی با شناسایی خودکار، بوست یک‌لمسی با گزارش واقعی رم آزادشده، پروفایل اختصاصی هر بازی، جعبه ابزار شناور داخل بازی، حالت مزاحمت‌نکن، قفل روشنایی و نرخ تازه‌سازی، نمایش زنده وضعیت، تاریخچه جلسات و گزارش هفتگی، ویجت صفحه اصلی و کلید تنظیمات سریع. همراه با هشت پس‌زمینه تمام‌رزولوشن، سه بسته صدا با موسیقی محیطی اختیاری و رابط کامل فارسی و انگلیسی.`
 
 ## Permissions to declare in the panel
 `ACCESS_NOTIFICATION_POLICY`, `SYSTEM_ALERT_WINDOW`, `PACKAGE_USAGE_STATS`, `WRITE_SETTINGS`,
