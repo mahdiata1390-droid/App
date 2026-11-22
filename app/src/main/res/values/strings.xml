@@ -49,6 +49,7 @@
     <string name="boost_failed">Boost could not finish</string>
     <string name="cancel">Cancel</string>
     <string name="launch_failed">Could not launch %1$s</string>
+    <string name="session_start_failed">Could not start the boost for %1$s — try again</string>
     <string name="boost_percent">%1$d%%</string>
 
     <!-- Settings -->

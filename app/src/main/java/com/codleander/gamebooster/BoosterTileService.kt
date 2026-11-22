@@ -89,7 +89,14 @@ class BoosterTileService : TileService() {
         fun isSessionActive(context: android.content.Context): Boolean {
             val runtime = context.getSharedPreferences("booster_runtime", android.content.Context.MODE_PRIVATE)
             val game = runtime.getString("target_label", null)
-            return !game.isNullOrBlank() || runtime.getBoolean("device_boost_active", false)
+            if (!game.isNullOrBlank()) {
+                // A game session is only real while its service keeps writing the heartbeat.
+                return !SessionGuards.isSessionStale(
+                    System.currentTimeMillis(),
+                    runtime.getLong("last_heartbeat", 0L)
+                )
+            }
+            return runtime.getBoolean("device_boost_active", false)
         }
 
         fun refresh(context: android.content.Context) {

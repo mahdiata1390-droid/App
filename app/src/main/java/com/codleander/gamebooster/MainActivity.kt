@@ -97,6 +97,8 @@ class MainActivity : Activity() {
     private var aurora: AuroraBackgroundView? = null
     private var pendingQuickBoost = false
     private var lastSessionActive: Boolean? = null
+    private var integrityBlocked = false
+    private var backdropPaused = false
 
     private var sounds: SoundPool? = null
     private var tapSound = 0
@@ -128,6 +130,9 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setTheme(Accent.themeRes(Prefs.accent(this)))
         if (!IntegrityCheck.isTrusted(this)) {
+            // No content view is inflated for an untrusted copy, so every later UI refresh
+            // must be skipped as well instead of dereferencing missing views.
+            integrityBlocked = true
             showTamperBlock()
             return
         }
@@ -170,6 +175,7 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (integrityBlocked) return
         if (intent.action == ACTION_QUICK_BOOST) {
             pendingQuickBoost = true
             requestQuickBoost()
@@ -183,12 +189,23 @@ class MainActivity : Activity() {
             refreshHomeStatus()
             return
         }
+        if (selectedGame == null && gamesLoading) {
+            // The tile and the widget boost the last played game. Deciding before the
+            // library has loaded would silently turn a game boost into a device boost.
+            pendingQuickBoost = true
+            return
+        }
         showPage(PAGE_HOME)
         startBoost(selectedGame)
     }
 
     override fun onResume() {
         super.onResume()
+        if (integrityBlocked) return
+        if (backdropPaused) {
+            backdropPaused = false
+            animateBackdrop()
+        }
         aurora?.resume()
         startStatsLoop()
         updateHomeChip()
@@ -201,6 +218,8 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        backdropPaused = true
+        findViewById<View>(R.id.backdrop)?.animate()?.cancel()
         aurora?.pause()
         stopStatsLoop()
         super.onPause()
@@ -414,7 +433,8 @@ class MainActivity : Activity() {
     }
 
     private fun animateBackdrop() {
-        val backdrop = findViewById<View>(R.id.backdrop)
+        if (backdropPaused) return
+        val backdrop = findViewById<View>(R.id.backdrop) ?: return
         backdrop.animate().cancel()
         backdrop.translationY = 0f
         backdrop.animate().translationY(-dp(26).toFloat()).setDuration(9000L)
@@ -424,7 +444,7 @@ class MainActivity : Activity() {
     }
 
     private fun swingBackdrop(backdrop: View) {
-        if (isFinishing || isDestroyed) return
+        if (isFinishing || isDestroyed || backdropPaused) return
         backdrop.animate().translationY(0f).setDuration(9000L)
             .setInterpolator(LinearInterpolator())
             .withEndAction { animateBackdrop() }
@@ -557,6 +577,11 @@ class MainActivity : Activity() {
     }
 
     private fun showAppIcon(view: ImageView, packageName: String?) {
+        // updateHomeChip() runs from the one-second stats loop; reloading the launcher icon
+        // through PackageManager on every tick is a needless main-thread IPC.
+        val key = packageName ?: ""
+        if (view.tag == key) return
+        view.tag = key
         val drawable = if (packageName == null) null else runCatching {
             packageManager.getApplicationIcon(packageName)
         }.getOrNull()
@@ -626,6 +651,7 @@ class MainActivity : Activity() {
                     updateHomeChip()
                     refreshHomeStatus()
                 }
+                if (pendingQuickBoost) requestQuickBoost()
             }
         }.start()
     }
@@ -1026,7 +1052,20 @@ class MainActivity : Activity() {
         val gameLabel = runtime.getString("target_label", null)
         val gameStart = runtime.getLong("session_started_at", 0L)
         if (!gameLabel.isNullOrBlank() && gameStart > 0L) {
-            return ActiveBoost(gameLabel, gameStart, true)
+            val heartbeat = runtime.getLong("last_heartbeat", 0L)
+            if (!SessionGuards.isSessionStale(System.currentTimeMillis(), heartbeat)) {
+                return ActiveBoost(gameLabel, gameStart, true)
+            }
+            // The session process is gone (killed or crashed) but its runtime keys and the
+            // widget/tile state stayed behind. Drop the session keys so a new boost is not
+            // blocked by a session that no longer exists; recovery markers for settings the
+            // service may have changed are intentionally left untouched.
+            runtime.edit()
+                .remove("target_label")
+                .remove("session_started_at")
+                .remove("active_play_ms")
+                .remove("last_heartbeat")
+                .apply()
         }
         if (runtime.getBoolean("device_boost_active", false)) {
             val deviceStart = runtime.getLong("device_boost_started_at", 0L)
@@ -1113,23 +1152,32 @@ class MainActivity : Activity() {
             return false
         }
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (runCatching { startActivity(launch) }.isFailure) {
-            toast(getString(R.string.launch_failed, game.label))
-            return false
-        }
+
+        val profile = GameProfiles.get(this, game.packageName)
         val serviceIntent = Intent(this, BoosterService::class.java).apply {
             action = BoosterService.ACTION_START
             putExtra(BoosterService.EXTRA_PACKAGE, game.packageName)
-            val profile = GameProfiles.get(this@MainActivity, game.packageName)
             putExtra("profile_dnd", profile.dnd)
             putExtra("profile_awake", true)
             putExtra("profile_brightness", profile.brightnessLock)
             putExtra("profile_refresh", profile.refreshLock || Prefs.refreshLock(this@MainActivity))
             putExtra("profile_hud", profile.hud)
         }
-        runCatching {
+        // Request the foreground service while this activity still owns the foreground.
+        // Android 12+ rejects a foreground-service start from the background, which is what
+        // happens when the game is opened before the service is requested.
+        val serviceStarted = runCatching {
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent)
             else startService(serviceIntent)
+        }.isSuccess
+        if (!serviceStarted) {
+            toast(getString(R.string.session_start_failed, game.label))
+            return false
+        }
+        if (runCatching { startActivity(launch) }.isFailure) {
+            toast(getString(R.string.launch_failed, game.label))
+            runCatching { stopService(Intent(this, BoosterService::class.java)) }
+            return false
         }
         selectedGame = game
         return true

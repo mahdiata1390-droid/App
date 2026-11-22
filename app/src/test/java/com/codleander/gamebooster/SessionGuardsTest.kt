@@ -32,6 +32,17 @@ class SessionGuardsTest {
     }
 
     @Test
+    fun staleSession_detects_a_dead_service_but_keeps_a_live_one() {
+        val stale = SessionGuards.HEARTBEAT_STALE_MS
+        assertFalse(SessionGuards.isSessionStale(10_000L, 9_000L, stale))
+        assertFalse(SessionGuards.isSessionStale(10_000L, 10_000L - stale, stale))
+        assertTrue(SessionGuards.isSessionStale(10_000L, 10_000L - stale - 1L, stale))
+        assertTrue(SessionGuards.isSessionStale(10_000L, 0L, stale))
+        // A clock that moved backwards must not be reported as a dead session.
+        assertFalse(SessionGuards.isSessionStale(10_000L, 12_000L, stale))
+    }
+
+    @Test
     fun wrongForeground_stops_only_after_grace_and_ignores_service_package() {
         assertFalse(SessionGuards.shouldStopForWrongForeground("game", "game", "booster", 20_000L, 15_000L))
         assertFalse(SessionGuards.shouldStopForWrongForeground("booster", "game", "booster", 20_000L, 15_000L))

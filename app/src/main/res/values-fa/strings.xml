@@ -46,6 +46,7 @@
     <string name="boost_failed">بوست کامل نشد</string>
     <string name="cancel">لغو</string>
     <string name="launch_failed">اجرای %1$s ممکن نشد</string>
+    <string name="session_start_failed">شروع بوست برای %1$s ممکن نشد — دوباره امتحان کن</string>
     <string name="boost_percent">%1$d%%</string>
 
     <string name="settings">تنظیمات</string>
