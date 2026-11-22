@@ -31,12 +31,18 @@ jobs:
           files = list(pathlib.Path("app/src/main").rglob("*.xml"))
           for path in files:
               ET.parse(path)
-              print(f"OK XML: {path}")
           print(f"Validated {len(files)} XML files.")
           PY
 
       - name: Run JVM unit tests
-        run: gradle --no-daemon testDebugUnitTest
+        run: |
+          gradle --no-daemon --console=plain testDebugUnitTest > /tmp/test.log 2>&1 || {
+            echo "unit tests failed";
+            grep -nE "FAILED|error:|e: " /tmp/test.log | head -40;
+            tail -40 /tmp/test.log;
+            exit 1;
+          }
+          echo "unit tests passed"
 
       - name: Run Android lint
         run: |
