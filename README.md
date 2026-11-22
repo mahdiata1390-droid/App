@@ -4,8 +4,8 @@ Production Android game booster for supported Android devices.
 
 ## Release
 - Display name: FLASH BOOSTER
-- Version: 2.3.0
-- Build: 230
+- Version: 1.0.0
+- Build: 1 (first public release)
 - Application ID: com.codleander.gamebooster
 - Min SDK: 26
 - Target SDK: 35
@@ -31,7 +31,9 @@ Edit the artwork or the script, never the generated PNGs.
 
 ## Store release
 `bash tools/build_release.sh` builds the signed release APK for Myket into
-`dist/flash-booster-2.3.0.apk`. Listing copy is in `myket/listing.md`.
+`dist/flash-booster-1.0.0.apk`. The same signed file is committed as
+`release/flash-booster-1.0.0.apk` so the published build can be downloaded straight from the
+repository. Listing copy is in `myket/listing.md`, the signing checklist in `RELEASE.md`.
 
 ## Important
 This app uses standard Android APIs available to ordinary applications. It does not claim privileged CPU/GPU overclocking or root-only performance controls.

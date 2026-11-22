@@ -7,6 +7,9 @@ local.properties
 *.aab
 dist/
 
+# The signed build that is published with each release is tracked, not ignored
+!release/*.apk
+
 # IDE
 .idea/
 *.iml

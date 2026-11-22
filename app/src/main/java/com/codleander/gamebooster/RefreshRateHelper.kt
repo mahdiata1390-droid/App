@@ -87,9 +87,19 @@ object RefreshRateHelper {
                 Settings.System.putFloat(resolver, "peak_refresh_rate", peak)
                 true
             }.getOrDefault(false) && restored
+        } else {
+            runCatching { Settings.System.putString(resolver, "peak_refresh_rate", null) }
         }
         if (min > 0f) {
-            runCatching { Settings.System.putFloat(resolver, "min_refresh_rate", min) }
+            restored = runCatching {
+                Settings.System.putFloat(resolver, "min_refresh_rate", min)
+                true
+            }.getOrDefault(false) && restored
+        } else {
+            // The session writes min_refresh_rate even on devices that had no value of their
+            // own, so leaving it behind would pin the panel to the highest rate forever.
+            // Clearing it hands the refresh-rate control back to the system.
+            runCatching { Settings.System.putString(resolver, "min_refresh_rate", null) }
         }
         if (restored) {
             prefs.edit()

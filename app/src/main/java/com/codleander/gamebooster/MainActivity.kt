@@ -981,18 +981,7 @@ class MainActivity : Activity() {
     }
 
     private fun restoreDeviceBoostDnd() {
-        val runtime = getSharedPreferences("booster_runtime", MODE_PRIVATE)
-        if (!runtime.contains("device_boost_dnd_previous")) return
-        val previous = runtime.getInt(
-            "device_boost_dnd_previous", NotificationManager.INTERRUPTION_FILTER_ALL
-        )
-        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (manager.isNotificationPolicyAccessGranted &&
-            manager.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_PRIORITY
-        ) {
-            runCatching { manager.setInterruptionFilter(previous) }
-        }
-        runtime.edit().remove("device_boost_dnd_previous").apply()
+        DndHelper.restoreDeviceBoost(this)
     }
 
     private fun finishBoost(game: GameInfo?, freedMb: Int, thermal: Int, startedAt: Long) {
@@ -1411,8 +1400,11 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.permissionSubline).setText(
             if (allGranted) R.string.perm_all_granted_sub else R.string.perm_some_sub
         )
-        findViewById<TextView>(R.id.permissionsValue).text =
+        findViewById<TextView>(R.id.permissionsValue).text = if (allGranted) {
+            getString(R.string.perm_all_granted)
+        } else {
             getString(R.string.perm_some_title, granted, total)
+        }
     }
 
     private fun bindPermissionStatus(id: Int, granted: Boolean) {
@@ -1553,7 +1545,7 @@ class MainActivity : Activity() {
             else -> 10
         }
         val values = HistoryStore.buckets(this, since, now, bucketCount)
-        val labels = buildLabels(historyRangeDays, bucketCount)
+        val labels = buildLabels(since, now, bucketCount, historyRangeDays)
         findViewById<HistoryChartView>(R.id.historyChart).setData(values, labels)
         findViewById<View>(R.id.historyEmpty).visibility =
             if (values.sum() <= 0f) View.VISIBLE else View.GONE
@@ -1594,18 +1586,21 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun buildLabels(days: Int, buckets: Int): List<String> {
-        val today = java.time.LocalDate.now()
-        return when (days) {
-            1 -> (0 until buckets).map { index ->
-                String.format(Locale.US, "%02d", (index * 2) % 24)
-            }
-            7 -> (0 until buckets).map { index ->
-                today.minusDays((buckets - 1 - index).toLong())
-                    .dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault())
-            }
-            else -> (0 until buckets).map { index ->
-                today.minusDays(((buckets - 1 - index) * 3).toLong()).dayOfMonth.toString()
+    /**
+     * Labels come from the real middle of each bucket, so the hours, weekdays and dates under
+     * the chart describe the data drawn above them instead of an assumed grid.
+     */
+    private fun buildLabels(since: Long, until: Long, buckets: Int, days: Int): List<String> {
+        val bucketMs = ((until - since) / buckets).coerceAtLeast(1L)
+        val zone = ZoneId.systemDefault()
+        return (0 until buckets).map { index ->
+            val middle = Instant.ofEpochMilli(since + bucketMs * index + bucketMs / 2).atZone(zone)
+            when (days) {
+                1 -> String.format(Locale.US, "%02d", middle.hour)
+                7 -> middle.dayOfWeek.getDisplayName(
+                    java.time.format.TextStyle.SHORT, Locale.getDefault()
+                )
+                else -> middle.dayOfMonth.toString()
             }
         }
     }

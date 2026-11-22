@@ -46,6 +46,26 @@ object DndHelper {
         return isOn(context)
     }
 
+    /**
+     * Puts back the interruption filter a one-off device boost changed. Every entry point that
+     * can end such a boost (the app, the widget, the quick-settings tile) restores through
+     * here, so DND never stays silently enabled after the boost is over.
+     */
+    fun restoreDeviceBoost(context: Context) {
+        val runtime = context.getSharedPreferences("booster_runtime", Context.MODE_PRIVATE)
+        if (!runtime.contains("device_boost_dnd_previous")) return
+        val previous = runtime.getInt(
+            "device_boost_dnd_previous", NotificationManager.INTERRUPTION_FILTER_ALL
+        )
+        val nm = manager(context)
+        if (nm.isNotificationPolicyAccessGranted &&
+            nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_PRIORITY
+        ) {
+            runCatching { nm.setInterruptionFilter(previous) }
+        }
+        runtime.edit().remove("device_boost_dnd_previous").apply()
+    }
+
     fun openAccessSettings(context: Context): Boolean = runCatching {
         val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
         if (context !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

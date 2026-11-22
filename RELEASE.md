@@ -1,11 +1,11 @@
-# FLASH BOOSTER 2.3.0 — Release Checklist
+# FLASH BOOSTER 1.0.0 — Release Checklist
 
 ## Build
 - Release variant: `assembleRelease`
 - Application ID: `com.codleander.gamebooster` (unchanged on purpose — changing it would break
   updates for everyone who already installed the app)
 - Display name: `FLASH BOOSTER` (`@string/app_name`)
-- Version: `2.3.0 (230)`
+- Version: `1.0.0 (1)` — the first public release
 - Target SDK: 35, Min SDK: 26
 - Release build is obfuscated (R8) and resource-shrunk; `app/proguard-rules.pro` holds the keep rules.
 
@@ -47,7 +47,9 @@ To make the key private:
 
 ## Before Myket upload
 1. Build the store package: `ANDROID_HOME=/path/to/sdk bash tools/build_release.sh`. It signs with
-   the release key, verifies the certificate and writes `dist/flash-booster-2.3.0.apk`.
+   the release key, verifies the certificate and writes `dist/flash-booster-1.0.0.apk`. The committed
+   copy of the same file is `release/flash-booster-1.0.0.apk`, so the repository always holds the
+   exact build that was published.
    Install that APK on a real Android phone.
 2. Test app launch, game detection, Boost, Refresh, DND access, Usage Access and Overlay access,
    the quick-settings tile, the home-screen widget and the animated background.

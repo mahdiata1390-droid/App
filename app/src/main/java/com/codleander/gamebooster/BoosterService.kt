@@ -294,6 +294,10 @@ class BoosterService : Service() {
         } else {
             persistRuntimeHeartbeat()
         }
+        // A session can also be ended from the overlay, a notification action or the system,
+        // which never touches the widget or the tile on its own.
+        BoosterWidgetProvider.refreshAll(this)
+        BoosterTileService.refresh(this)
         super.onDestroy()
     }
 

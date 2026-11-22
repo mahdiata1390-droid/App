@@ -78,6 +78,7 @@ class BoosterTileService : TileService() {
             if (!game.isNullOrBlank()) {
                 context.stopService(Intent(context, BoosterService::class.java))
             } else {
+                DndHelper.restoreDeviceBoost(context)
                 runtime.edit()
                     .remove("device_boost_active")
                     .remove("device_boost_started_at")

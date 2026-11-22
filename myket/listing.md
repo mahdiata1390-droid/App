@@ -1,7 +1,7 @@
 # Myket store listing — FLASH BOOSTER
 
 Copy-paste material for the Myket developer panel (`developer.myket.ir`).
-Package: `com.codleander.gamebooster` · Version: 2.3.0 (230) · Category: Tools / Tools & Utilities.
+Package: `com.codleander.gamebooster` · Version: 1.0.0 (1) · Category: Tools / Tools & Utilities.
 
 ## Icon and images
 | Panel field | File | Notes |
@@ -62,9 +62,9 @@ Good to know
 - رفتار برنامه به دستگاه بستگی دارد؛ بعضی سازندگان پاک‌سازی پس‌زمینه، تغییر نرخ تازه‌سازی یا کنترل روشنایی را محدود می‌کنند.
 - روی اندروید ۸.۰ (API 26) و بالاتر اجرا می‌شود. بدون تبلیغ، بدون حساب کاربری و بدون پشتیبان‌گیری ابری از داده‌های جلسه.
 
-## Release notes 2.3.0
-- English: `New FLASH BOOSTER icon. Per-game profiles, in-game toolbox and refresh-rate lock. Weekly report added. Performance and stability fixes.`
-- Persian: `آیکون جدید فلش بوستر. پروفایل اختصاصی هر بازی، جعبه ابزار داخل بازی و قفل نرخ تازه‌سازی. گزارش هفتگی اضافه شد. رفع باگ‌های عملکردی و پایداری.`
+## Release notes 1.0.0
+- English: `First public release of FLASH BOOSTER. Game library with automatic detection, one-tap boost with a real freed-RAM report, per-game profiles, in-game floating toolbox, DND game mode, brightness and refresh-rate lock, live telemetry, session history and weekly report, home-screen widget and quick-settings tile, Persian and English interface.`
+- Persian: `اولین نسخه انتشار عمومی فلش بوستر. کتابخانه بازی با شناسایی خودکار، بوست یک‌لمسی با گزارش واقعی رم آزادشده، پروفایل اختصاصی هر بازی، جعبه ابزار شناور داخل بازی، حالت مزاحمت‌نکن، قفل روشنایی و نرخ تازه‌سازی، نمایش زنده وضعیت، تاریخچه جلسات و گزارش هفتگی، ویجت صفحه اصلی و کلید تنظیمات سریع، رابط فارسی و انگلیسی.`
 
 ## Permissions to declare in the panel
 `ACCESS_NOTIFICATION_POLICY`, `SYSTEM_ALERT_WINDOW`, `PACKAGE_USAGE_STATS`, `WRITE_SETTINGS`,
@@ -75,7 +75,8 @@ The app has no ads, no analytics SDK, no account system and no data collection b
 history stored on the device.
 
 ## Upload checklist
-1. `bash tools/build_release.sh` (or `gradle :app:assembleRelease`) produces `dist/flash-booster-2.3.0.apk`.
+1. `bash tools/build_release.sh` (or `gradle :app:assembleRelease`) produces `dist/flash-booster-1.0.0.apk`;
+   the published copy is `release/flash-booster-1.0.0.apk`.
 2. Confirm the APK is signed with the release certificate (`RELEASE_SIGNING_FINGERPRINT.txt`).
 3. Upload the APK, then fill title, descriptions, icon, at least three real screenshots, category and the
    privacy information above.
