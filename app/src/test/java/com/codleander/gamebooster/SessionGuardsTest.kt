@@ -33,13 +33,14 @@ class SessionGuardsTest {
 
     @Test
     fun staleSession_detects_a_dead_service_but_keeps_a_live_one() {
+        val now = 1_700_000_000_000L
         val stale = SessionGuards.HEARTBEAT_STALE_MS
-        assertFalse(SessionGuards.isSessionStale(10_000L, 9_000L, stale))
-        assertFalse(SessionGuards.isSessionStale(10_000L, 10_000L - stale, stale))
-        assertTrue(SessionGuards.isSessionStale(10_000L, 10_000L - stale - 1L, stale))
-        assertTrue(SessionGuards.isSessionStale(10_000L, 0L, stale))
+        assertFalse(SessionGuards.isSessionStale(now, now - 2_000L, stale))
+        assertFalse(SessionGuards.isSessionStale(now, now - stale, stale))
+        assertTrue(SessionGuards.isSessionStale(now, now - stale - 1L, stale))
+        assertTrue(SessionGuards.isSessionStale(now, 0L, stale))
         // A clock that moved backwards must not be reported as a dead session.
-        assertFalse(SessionGuards.isSessionStale(10_000L, 12_000L, stale))
+        assertFalse(SessionGuards.isSessionStale(now, now + 2_000L, stale))
     }
 
     @Test
