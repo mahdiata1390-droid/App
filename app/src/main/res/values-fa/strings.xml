@@ -268,4 +268,26 @@
     <string name="integrity_title">نسخه‌ی دستکاری‌شده</string>
     <string name="integrity_message">امضای دیجیتال این نسخه با FLASH BOOSTER رسمی یکی نیست، به همین دلیل اجرا نمی‌شود. نسخه‌ی رسمی را نصب کن.</string>
     <string name="integrity_close">بستن</string>
+    <string name="private_dns">DNS خصوصی</string>
+    <string name="private_dns_sub">درخواست‌های DNS رمزنگاری‌شده با TLS</string>
+    <string name="dns_about">درخواست‌های DNS دیگر به سرور اپراتور نمی‌روند و از یک تونل رمزنگاری‌شده مستقیم به ریزالور DNS-over-TLS می‌رسند. فقط DNS از تونل عبور می‌کند، پس ترافیک بازی و پینگ دست‌نخورده می‌ماند.</string>
+    <string name="dns_off">خاموش</string>
+    <string name="dns_cloudflare">کلودفلر</string>
+    <string name="dns_google">گوگل</string>
+    <string name="dns_quad9">کواد۹</string>
+    <string name="dns_adguard">ادگارد</string>
+    <string name="dns_custom">دلخواه</string>
+    <string name="dns_pick">%1$s • %2$s</string>
+    <string name="dns_custom_title">ریزالور دلخواه DNS-over-TLS</string>
+    <string name="dns_ip_hint">آی‌پی ریزالور، مثلاً 1.1.1.1</string>
+    <string name="dns_host_hint">هاست‌نیم TLS، مثلاً one.one.one.one</string>
+    <string name="dns_invalid">یک آی‌پی معتبر نسخه ۴ و هاست‌نیم TLS وارد کن</string>
+    <string name="dns_need_permission">برای DNS خصوصی اجازه VPN لازم است</string>
+    <string name="dns_enabled_toast">DNS خصوصی روشن • %1$s</string>
+    <string name="dns_disabled_toast">DNS خصوصی خاموش شد</string>
+    <string name="dns_system_settings">DNS خصوصی سیستم</string>
+    <string name="qa_dns">DNS</string>
+    <string name="dns_notif_channel">DNS خصوصی</string>
+    <string name="dns_notif_active">DNS-over-TLS • %1$s</string>
+    <string name="dns_notif_stop">خاموش کن</string>
 </resources>

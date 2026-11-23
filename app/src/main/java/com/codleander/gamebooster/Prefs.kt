@@ -87,6 +87,31 @@ object Prefs {
         prefs(context).edit().putBoolean("refresh_lock", enabled).apply()
     }
 
+    fun dnsEnabled(context: Context): Boolean = prefs(context).getBoolean("dns_enabled", false)
+
+    fun setDnsEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("dns_enabled", enabled).apply()
+    }
+
+    fun dnsPreset(context: Context): Int =
+        prefs(context).getInt("dns_preset", PrivateDns.PRESET_OFF)
+
+    fun setDnsPreset(context: Context, preset: Int) {
+        prefs(context).edit().putInt("dns_preset", preset).apply()
+    }
+
+    fun dnsIp(context: Context): String = prefs(context).getString("dns_ip", "") ?: ""
+
+    fun setDnsIp(context: Context, ip: String) {
+        prefs(context).edit().putString("dns_ip", ip.trim()).apply()
+    }
+
+    fun dnsHost(context: Context): String = prefs(context).getString("dns_host", "") ?: ""
+
+    fun setDnsHost(context: Context, host: String) {
+        prefs(context).edit().putString("dns_host", host.trim()).apply()
+    }
+
     fun displayName(context: Context): String =
         prefs(context).getString("display_name", "")?.trim() ?: ""
 

@@ -268,6 +268,43 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/qaDns"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_card_soft"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:layout_width="19dp"
+                    android:layout_height="19dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_network"
+                    android:tint="?attr/gbAccentBright" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="@string/qa_dns"
+                    android:textColor="@color/gb_text"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/qaDnsState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/dns_off"
+                    android:textColor="@color/gb_muted"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/qaRam"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"

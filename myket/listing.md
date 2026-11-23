@@ -1,7 +1,7 @@
 # Myket store listing — FLASH BOOSTER
 
 Copy-paste material for the Myket developer panel (`developer.myket.ir`).
-Package: `com.codleander.gamebooster` · Version: 1.0.0 (1) · Category: Tools / Tools & Utilities.
+Package: `com.codleander.gamebooster` · Version: 1.1.0 (2) · Category: Tools / Tools & Utilities.
 
 ## Icon and images
 | Panel field | File | Notes |
@@ -29,6 +29,7 @@ Features
 - Per-game profiles: Do Not Disturb, brightness lock, high refresh-rate lock and the in-game toolbox
 - In-game floating toolbox with free-RAM, FPS display and end-session controls
 - Live telemetry: RAM, battery, temperature, network type and latency
+- Optional private DNS: encrypted DNS-over-TLS lookups through a DNS-only tunnel, with Cloudflare, Google, Quad9, AdGuard or your own resolver
 - Gaming Do Not Disturb so calls and notifications do not interrupt a session
 - Keep-awake and brightness lock while playing
 - Session timer, history and a weekly report
@@ -41,6 +42,7 @@ Good to know
 - FLASH BOOSTER uses standard Android APIs available to ordinary apps. It does not overclock the CPU or GPU, and it does not need root.
 - Some features are optional and need access you grant yourself: Usage Access (game detection), Draw over other apps (in-game toolbox), Do Not Disturb access (Game Mode) and Modify system settings (brightness and refresh rate).
 - Behaviour depends on the device: some manufacturers restrict background cleanup, refresh-rate changes or brightness control.
+- Private DNS is off until you turn it on. It uses the standard Android VPN API to route only DNS traffic; the app never reads, stores or forwards your other traffic. It can be switched off at any time, and Android shows its VPN key in the status bar while it is on.
 - Runs on Android 8.0 (API 26) and newer. No ads, no account, no cloud backup of your session data.
 
 ## Full description — Persian
@@ -52,6 +54,7 @@ Good to know
 - پروفایل اختصاصی هر بازی: قطع مزاحمت‌ها، قفل روشنایی، قفل نرخ تازه‌سازی بالا و جعبه ابزار داخل بازی
 - جعبه ابزار شناور در بازی با آزادسازی رم، نمایش FPS و پایان جلسه
 - نمایش زنده وضعیت: رم، باتری، دما، نوع شبکه و پینگ
+- DNS خصوصی اختیاری: درخواست‌های رمزنگاری‌شده DNS-over-TLS از طریق تونلی که فقط DNS را عبور می‌دهد، با کلودفلر، گوگل، کواد۹، ادگارد یا ریزالور دلخواه
 - حالت مزاحمت‌نکن مخصوص بازی تا تماس و اعلان وسط بازی قطع نشود
 - روشن ماندن صفحه و قفل روشنایی در طول بازی
 - زمان‌سنج جلسه، تاریخچه و گزارش هفتگی
@@ -64,7 +67,12 @@ Good to know
 - فلش بوستر از APIهای استاندارد اندروید استفاده می‌کند. پردازنده یا گرافیک را اورکلاک نمی‌کند و به روت نیاز ندارد.
 - بعضی امکانات اختیاری‌اند و به دسترسی‌هایی نیاز دارند که خودت می‌دهی: دسترسی استفاده از برنامه‌ها (شناسایی بازی)، نمایش روی برنامه‌های دیگر (جعبه ابزار داخل بازی)، دسترسی مزاحمت‌نکن (حالت بازی) و تغییر تنظیمات سیستم (روشنایی و نرخ تازه‌سازی).
 - رفتار برنامه به دستگاه بستگی دارد؛ بعضی سازندگان پاک‌سازی پس‌زمینه، تغییر نرخ تازه‌سازی یا کنترل روشنایی را محدود می‌کنند.
+- DNS خصوصی تا وقتی خودت روشنش نکنی خاموش است. برای عبور دادن فقط ترافیک DNS از API استاندارد VPN اندروید استفاده می‌کند؛ برنامه بقیه ترافیک تو را نمی‌خواند، ذخیره نمی‌کند و جایی نمی‌فرستد. هر لحظه می‌توانی خاموشش کنی و تا روشن است، نشان VPN در نوار وضعیت دیده می‌شود.
 - روی اندروید ۸.۰ (API 26) و بالاتر اجرا می‌شود. بدون تبلیغ، بدون حساب کاربری و بدون پشتیبان‌گیری ابری از داده‌های جلسه.
+
+## Release notes 1.1.0
+- English: `Optional private DNS: switch lookups to an encrypted DNS-over-TLS resolver (Cloudflare, Google, Quad9, AdGuard or your own IP and TLS hostname) without touching game traffic. Adds a DNS quick action on the home screen, keeps every existing boost, profile and personalization feature, and stays off until you turn it on.`
+- Persian: `DNS خصوصی اختیاری: درخواست‌های DNS را به یک ریزالور رمزنگاری‌شده DNS-over-TLS بسپار (کلودفلر، گوگل، کواد۹، ادگارد یا آی‌پی و هاست‌نیم دلخواه) بدون اینکه ترافیک بازی تغییر کند. یک کلید سریع DNS در صفحه اصلی اضافه شده و همه امکانات قبلی بوست، پروفایل و شخصی‌سازی سر جایشان هستند. تا روشنش نکنی خاموش است.`
 
 ## Release notes 1.0.0
 - English: `First public release of FLASH BOOSTER. Game library with automatic detection, one-tap boost with a real freed-RAM report, per-game profiles, in-game floating toolbox, DND game mode, brightness and refresh-rate lock, live telemetry, session history and weekly report, home-screen widget and quick-settings tile. Ships eight full-resolution backdrops, three sound packs with optional ambient music, and complete Persian and English interfaces.`
@@ -79,8 +87,8 @@ The app has no ads, no analytics SDK, no account system and no data collection b
 history stored on the device.
 
 ## Upload checklist
-1. `bash tools/build_release.sh` (or `gradle :app:assembleRelease`) produces `dist/flash-booster-1.0.0.apk`;
-   the published copy is `release/flash-booster-1.0.0.apk`.
+1. `bash tools/build_release.sh` (or `gradle :app:assembleRelease`) produces `dist/flash-booster-1.1.0.apk`;
+   the published copy is `release/flash-booster-1.1.0.apk`.
 2. Confirm the APK is signed with the release certificate (`RELEASE_SIGNING_FINGERPRINT.txt`).
 3. Upload the APK, then fill title, descriptions, icon, at least three real screenshots, category and the
    privacy information above.

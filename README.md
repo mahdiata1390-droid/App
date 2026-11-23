@@ -4,8 +4,8 @@ Production Android game booster for supported Android devices.
 
 ## Release
 - Display name: FLASH BOOSTER
-- Version: 1.0.0
-- Build: 1 (first public release)
+- Version: 1.1.0
+- Build: 2 (adds optional private DNS)
 - Application ID: com.codleander.gamebooster
 - Min SDK: 26
 - Target SDK: 35
@@ -18,6 +18,8 @@ Production Android game booster for supported Android devices.
 - Floating HUD / toolbox
 - RAM, battery, thermal and refresh-rate telemetry
 - Network type and latency check
+- Optional private DNS: DNS-over-TLS through a DNS-only tunnel, four built-in resolvers
+  plus a custom resolver (any IP and TLS hostname)
 - Brightness lock
 - Keep-awake support
 - Session timer and history
@@ -40,9 +42,10 @@ Edit the artwork or the script, never the generated PNGs.
 
 ## Store release
 `bash tools/build_release.sh` builds the signed release APK for Myket into
-`dist/flash-booster-1.0.0.apk`. The same signed file is committed as
-`release/flash-booster-1.0.0.apk` so the published build can be downloaded straight from the
-repository. Listing copy is in `myket/listing.md`, the signing checklist in `RELEASE.md`.
+`dist/flash-booster-1.1.0.apk`. The same signed file is committed as
+`release/flash-booster-<version>.apk` so the published build can be downloaded straight from the
+repository; the committed `release/flash-booster-1.0.0.apk` is the previous build and needs a
+rerun of the script to publish 1.1.0. Listing copy is in `myket/listing.md`, the signing checklist in `RELEASE.md`.
 
 ## Important
 This app uses standard Android APIs available to ordinary applications. It does not claim privileged CPU/GPU overclocking or root-only performance controls.

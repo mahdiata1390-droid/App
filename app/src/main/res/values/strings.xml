@@ -279,4 +279,26 @@
     <string name="integrity_title">Modified copy detected</string>
     <string name="integrity_message">The signature of this copy does not match the official FLASH BOOSTER, so it will not run. Install the official release instead.</string>
     <string name="integrity_close">Close</string>
+    <string name="private_dns">Private DNS</string>
+    <string name="private_dns_sub">Encrypted DNS-over-TLS lookups</string>
+    <string name="dns_about">Lookups stop going to the carrier DNS and go straight to a DNS-over-TLS resolver through an encrypted tunnel. Only DNS is routed, so game traffic and ping stay exactly as they are.</string>
+    <string name="dns_off">Off</string>
+    <string name="dns_cloudflare">Cloudflare</string>
+    <string name="dns_google">Google</string>
+    <string name="dns_quad9">Quad9</string>
+    <string name="dns_adguard">AdGuard</string>
+    <string name="dns_custom">Custom</string>
+    <string name="dns_pick">%1$s • %2$s</string>
+    <string name="dns_custom_title">Custom DNS-over-TLS resolver</string>
+    <string name="dns_ip_hint">Resolver IP, e.g. 1.1.1.1</string>
+    <string name="dns_host_hint">TLS hostname, e.g. one.one.one.one</string>
+    <string name="dns_invalid">Enter a valid IPv4 address and a TLS hostname</string>
+    <string name="dns_need_permission">VPN permission is needed for private DNS</string>
+    <string name="dns_enabled_toast">Private DNS on • %1$s</string>
+    <string name="dns_disabled_toast">Private DNS off</string>
+    <string name="dns_system_settings">System Private DNS</string>
+    <string name="qa_dns">DNS</string>
+    <string name="dns_notif_channel">Private DNS</string>
+    <string name="dns_notif_active">DNS-over-TLS • %1$s</string>
+    <string name="dns_notif_stop">Turn off</string>
 </resources>

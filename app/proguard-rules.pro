@@ -8,6 +8,7 @@
 # Components that the system instantiates from the manifest.
 -keep class com.codleander.gamebooster.MainActivity { *; }
 -keep class com.codleander.gamebooster.BoosterService { *; }
+-keep class com.codleander.gamebooster.DnsVpnService { *; }
 -keep class com.codleander.gamebooster.BoosterTileService { *; }
 -keep class com.codleander.gamebooster.BoosterWidgetProvider { *; }
 

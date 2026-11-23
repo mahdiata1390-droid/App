@@ -19,6 +19,7 @@ import android.graphics.drawable.Drawable
 import android.media.AudioManager
 import android.media.SoundPool
 import android.net.Uri
+import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -71,8 +72,11 @@ class MainActivity : Activity() {
         private const val STEP_DONE = 2
 
         private const val REQ_NOTIFICATIONS = 1001
+        private const val REQ_VPN = 1002
 
         const val ACTION_QUICK_BOOST = "com.codleander.gamebooster.QUICK_BOOST"
+
+        private const val PRIVATE_DNS_SETTINGS_ACTION = "android.settings.PRIVATE_DNS_SETTINGS"
 
         private const val SOUND_NEON = 0
         private const val SOUND_SOFT = 1
@@ -210,6 +214,7 @@ class MainActivity : Activity() {
         refreshHomeStatus()
         refreshPermissions()
         syncToggles()
+        PrivateDns.ensureStarted(this)
         refreshQuickActions()
         if (currentPage == PAGE_HISTORY) refreshHistory()
     }
@@ -352,11 +357,13 @@ class MainActivity : Activity() {
 
         val qaDnd = findViewById<View>(R.id.qaDnd)
         val qaFps = findViewById<View>(R.id.qaFps)
+        val qaDns = findViewById<View>(R.id.qaDns)
         val qaRam = findViewById<View>(R.id.qaRam)
         qaDnd.setOnClickListener { tapFeedback(); toggleDndQuick() }
         qaFps.setOnClickListener { tapFeedback(); toggleFpsQuick() }
+        qaDns.setOnClickListener { tapFeedback(); choosePrivateDns() }
         qaRam.setOnClickListener { tapFeedback(); freeRamQuick() }
-        pressFeedback(qaDnd, qaFps, qaRam)
+        pressFeedback(qaDnd, qaFps, qaDns, qaRam)
     }
 
     private fun refreshQuickActions() {
@@ -380,6 +387,18 @@ class MainActivity : Activity() {
         fpsState.setText(if (fpsOn) R.string.qa_on else R.string.qa_off)
         fpsState.setTextColor(
             ContextCompat.getColor(this, if (fpsOn) R.color.gb_green else R.color.gb_muted)
+        )
+        refreshDnsUi()
+    }
+
+    private fun refreshDnsUi() {
+        val active = PrivateDns.active(this) != null
+        val label = PrivateDns.label(this)
+        findViewById<TextView>(R.id.dnsValue).text = label
+        val state = findViewById<TextView>(R.id.qaDnsState)
+        state.text = label
+        state.setTextColor(
+            ContextCompat.getColor(this, if (active) R.color.gb_green else R.color.gb_muted)
         )
     }
 
@@ -1184,10 +1203,12 @@ class MainActivity : Activity() {
         language.setOnClickListener { tapFeedback(); chooseLanguage() }
         permissions.setOnClickListener { tapFeedback(); showPage(PAGE_PERMISSIONS) }
         val profilesRow = findViewById<View>(R.id.rowProfiles)
+        val dnsRow = findViewById<View>(R.id.rowDns)
         val accentRow = findViewById<View>(R.id.rowAccent)
         val soundRow = findViewById<View>(R.id.rowSound)
         val backdropRow = findViewById<View>(R.id.rowBackdrop)
         profilesRow.setOnClickListener { tapFeedback(); openGameProfiles() }
+        dnsRow.setOnClickListener { tapFeedback(); choosePrivateDns() }
         accentRow.setOnClickListener { tapFeedback(); chooseAccent() }
         soundRow.setOnClickListener { tapFeedback(); chooseSoundPack() }
         backdropRow.setOnClickListener { tapFeedback(); chooseBackdrop() }
@@ -1202,7 +1223,7 @@ class MainActivity : Activity() {
         }
         pressFeedback(
             profile, boostMode, appearance, language, permissions,
-            profilesRow, accentRow, soundRow, backdropRow
+            profilesRow, dnsRow, accentRow, soundRow, backdropRow
         )
 
         val autoBoost = findViewById<Switch>(R.id.autoBoostSwitch)
@@ -1235,6 +1256,7 @@ class MainActivity : Activity() {
             if (Prefs.language(this) == "fa") "فارسی" else "English"
         syncToggles()
         refreshSettingValues()
+        refreshDnsUi()
     }
 
     private fun syncProfileName() {
@@ -1467,6 +1489,18 @@ class MainActivity : Activity() {
                 })
             }.onFailure { toast(getString(R.string.settings_unavailable)) }
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_VPN) return
+        if (resultCode == RESULT_OK) {
+            startPrivateDns()
+            return
+        }
+        Prefs.setDnsEnabled(this, false)
+        refreshDnsUi()
+        toast(getString(R.string.dns_need_permission))
     }
 
     override fun onRequestPermissionsResult(
@@ -1850,6 +1884,135 @@ class MainActivity : Activity() {
         Prefs.setRefreshLock(this, true)
         tapFeedback()
         toast(getString(R.string.refresh_on_toast, hz.toInt()))
+    }
+
+    // -------------------------------------------------------------- private DNS
+
+    /**
+     * Private DNS is opt-in and needs the one-time VPN grant. Everything here reads the real
+     * state back, so the row and the home chip never claim a tunnel that is not up.
+     */
+    private fun choosePrivateDns() {
+        val resolvers = PrivateDns.builtInResolvers()
+        val labels = ArrayList<String>(resolvers.size + 2)
+        labels.add(getString(R.string.dns_off))
+        resolvers.forEach { resolver ->
+            labels.add(getString(R.string.dns_pick, getString(PrivateDns.titleRes(resolver.preset)), resolver.ip))
+        }
+        val custom = PrivateDns.resolver(this)
+        val customLabel = if (custom != null && custom.preset == PrivateDns.PRESET_CUSTOM) {
+            getString(R.string.dns_pick, getString(R.string.dns_custom), custom.ip)
+        } else {
+            getString(R.string.dns_custom)
+        }
+        labels.add(customLabel)
+
+        val selected = when (val preset = Prefs.dnsPreset(this)) {
+            PrivateDns.PRESET_OFF -> 0
+            PrivateDns.PRESET_CUSTOM -> labels.size - 1
+            else -> (resolvers.indexOfFirst { it.preset == preset } + 1).coerceAtLeast(0)
+        }
+
+        val builder = AlertDialog.Builder(this)
+            .setTitle(R.string.private_dns)
+            .setMessage(R.string.dns_about)
+            .setSingleChoiceItems(labels.toTypedArray(), selected) { dialog, which ->
+                dialog.dismiss()
+                when {
+                    which == 0 -> disablePrivateDns()
+                    which <= resolvers.size -> {
+                        val resolver = resolvers[which - 1]
+                        enablePrivateDns(resolver.preset, resolver.ip, resolver.host)
+                    }
+                    else -> editCustomDns()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+        if (Build.VERSION.SDK_INT >= 28) {
+            builder.setNeutralButton(R.string.dns_system_settings) { _, _ -> openSystemPrivateDns() }
+        }
+        builder.show()
+    }
+
+    private fun enablePrivateDns(preset: Int, ip: String, host: String) {
+        if (preset == PrivateDns.PRESET_CUSTOM &&
+            (!PrivateDns.isValidIp(ip) || !PrivateDns.isValidHost(host))
+        ) {
+            toast(getString(R.string.dns_invalid))
+            return
+        }
+        Prefs.setDnsPreset(this, preset)
+        if (preset == PrivateDns.PRESET_CUSTOM) {
+            Prefs.setDnsIp(this, ip)
+            Prefs.setDnsHost(this, host)
+        }
+        val consent = VpnService.prepare(this)
+        if (consent != null) {
+            if (runCatching { startActivityForResult(consent, REQ_VPN) }.isFailure) {
+                Prefs.setDnsEnabled(this, false)
+                toast(getString(R.string.dns_need_permission))
+            }
+            return
+        }
+        startPrivateDns()
+    }
+
+    private fun startPrivateDns() {
+        PrivateDns.enable(
+            this,
+            Prefs.dnsPreset(this),
+            Prefs.dnsIp(this),
+            Prefs.dnsHost(this)
+        )
+        refreshDnsUi()
+        playSound(SoundPacks.SUCCESS, 0.7f)
+        toast(getString(R.string.dns_enabled_toast, PrivateDns.label(this)))
+    }
+
+    private fun disablePrivateDns() {
+        PrivateDns.disable(this)
+        refreshDnsUi()
+        tapFeedback()
+        toast(getString(R.string.dns_disabled_toast))
+    }
+
+    private fun editCustomDns() {
+        val input = EditText(this).apply {
+            hint = getString(R.string.dns_ip_hint)
+            setText(Prefs.dnsIp(this@MainActivity))
+            setSingleLine(true)
+        }
+        val host = EditText(this).apply {
+            hint = getString(R.string.dns_host_hint)
+            setText(Prefs.dnsHost(this@MainActivity))
+            setSingleLine(true)
+        }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(6), dp(20), 0)
+            addView(input)
+            addView(host)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.dns_custom_title)
+            .setView(container)
+            .setPositiveButton(R.string.save) { _, _ ->
+                enablePrivateDns(
+                    PrivateDns.PRESET_CUSTOM,
+                    input.text.toString(),
+                    host.text.toString()
+                )
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** The Private DNS screen has no public constant, so the action is opened by name. */
+    private fun openSystemPrivateDns() {
+        if (runCatching { startActivity(Intent(PRIVATE_DNS_SETTINGS_ACTION)) }.isSuccess) return
+        if (runCatching { startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS)) }.isFailure) {
+            toast(getString(R.string.settings_unavailable))
+        }
     }
 
     private fun openGameProfiles() {

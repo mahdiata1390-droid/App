@@ -605,6 +605,66 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/rowDns"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card_soft"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="14dp">
+
+            <ImageView
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_icon_circle"
+                android:contentDescription="@null"
+                android:padding="9dp"
+                android:src="@drawable/ic_network"
+                android:tint="?attr/gbAccentBright" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/GbRowTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/private_dns" />
+
+                <TextView
+                    style="@style/GbRowSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/private_dns_sub" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/dnsValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:text="@string/dns_off"
+                android:textColor="?attr/gbAccentBright"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron"
+                android:tint="@color/gb_muted" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/rowAccent"
             android:layout_width="match_parent"
             android:layout_height="66dp"
