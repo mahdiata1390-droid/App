@@ -73,6 +73,8 @@ class MainActivity : Activity() {
 
         private const val REQ_NOTIFICATIONS = 1001
         private const val REQ_VPN = 1002
+        private const val REQ_BACKUP_EXPORT = 1003
+        private const val REQ_BACKUP_IMPORT = 1004
 
         const val ACTION_QUICK_BOOST = "com.codleander.gamebooster.QUICK_BOOST"
 
@@ -100,6 +102,7 @@ class MainActivity : Activity() {
     private var syncingToggles = false
     private var aurora: AuroraBackgroundView? = null
     private var pendingQuickBoost = false
+    private var pendingGameBoost: String? = null
     private var lastSessionActive: Boolean? = null
     private var integrityBlocked = false
     private var backdropPaused = false
@@ -162,6 +165,37 @@ class MainActivity : Activity() {
             pendingQuickBoost = true
             ui.postDelayed({ if (pendingQuickBoost) requestQuickBoost() }, 900L)
         }
+        handleGameShortcut(intent)
+    }
+
+    /**
+     * Launcher shortcuts carry a package name so a long-press can boost one specific game.
+     * The library may still be loading, so the request waits for it instead of being dropped.
+     */
+    private fun handleGameShortcut(intent: Intent?) {
+        if (intent?.action != GameShortcuts.ACTION_BOOST_GAME) return
+        val packageName = intent.getStringExtra(GameShortcuts.EXTRA_PACKAGE) ?: return
+        pendingGameBoost = packageName
+        applyPendingGameBoost()
+    }
+
+    private fun applyPendingGameBoost() {
+        val packageName = pendingGameBoost ?: return
+        if (gamesLoading || games.isEmpty()) return
+        pendingGameBoost = null
+        val game = games.firstOrNull { it.packageName == packageName && it.installed }
+        if (game == null) {
+            toast(getString(R.string.shortcut_missing))
+            return
+        }
+        selectedGame = game
+        updateHomeChip()
+        refreshHomeStatus()
+        if (activeBoost() == null) {
+            startBoost(game)
+        } else {
+            showPage(PAGE_HOME)
+        }
     }
 
     private fun showTamperBlock() {
@@ -181,6 +215,7 @@ class MainActivity : Activity() {
             pendingQuickBoost = true
             requestQuickBoost()
         }
+        handleGameShortcut(intent)
     }
 
     private fun requestQuickBoost() {
@@ -208,6 +243,7 @@ class MainActivity : Activity() {
             animateBackdrop()
         }
         aurora?.resume()
+        LiquidGlass.resume(this)
         startStatsLoop()
         updateHomeChip()
         refreshSessionUi()
@@ -223,6 +259,7 @@ class MainActivity : Activity() {
         backdropPaused = true
         findViewById<View>(R.id.backdrop)?.animate()?.cancel()
         aurora?.pause()
+        LiquidGlass.pause(this)
         stopStatsLoop()
         super.onPause()
     }
@@ -667,7 +704,9 @@ class MainActivity : Activity() {
                     updateHomeChip()
                     refreshHomeStatus()
                 }
+                GameShortcuts.sync(this, loaded)
                 if (pendingQuickBoost) requestQuickBoost()
+                applyPendingGameBoost()
             }
         }.start()
     }
@@ -1221,6 +1260,19 @@ class MainActivity : Activity() {
             Prefs.setAmbient(this, checked)
             playSound(SoundPacks.TAP, 0.6f)
         }
+        findViewById<Switch>(R.id.thermalGuardSwitch).setOnCheckedChangeListener { _, checked ->
+            if (syncingToggles) return@setOnCheckedChangeListener
+            Prefs.setThermalGuard(this, checked)
+            playSound(SoundPacks.TAP, 0.6f)
+        }
+        findViewById<Switch>(R.id.breakSwitch).setOnCheckedChangeListener { _, checked ->
+            if (syncingToggles) return@setOnCheckedChangeListener
+            Prefs.setBreakMinutes(this, if (checked) 60 else 0)
+            playSound(SoundPacks.TAP, 0.6f)
+        }
+        val backupRow = findViewById<View>(R.id.rowBackup)
+        backupRow.setOnClickListener { tapFeedback(); chooseBackup() }
+        pressFeedback(backupRow)
         pressFeedback(
             profile, boostMode, appearance, language, permissions,
             profilesRow, dnsRow, accentRow, soundRow, backdropRow
@@ -1249,9 +1301,7 @@ class MainActivity : Activity() {
         }
 
         findViewById<TextView>(R.id.boostModeValue).setText(boostModeLabelRes(Prefs.boostMode(this)))
-        findViewById<TextView>(R.id.appearanceValue).setText(
-            if (Prefs.amoled(this)) R.string.appearance_amoled else R.string.appearance_dark
-        )
+        findViewById<TextView>(R.id.appearanceValue).setText(appearanceLabelRes())
         findViewById<TextView>(R.id.languageValue).text =
             if (Prefs.language(this) == "fa") "فارسی" else "English"
         syncToggles()
@@ -1295,6 +1345,8 @@ class MainActivity : Activity() {
         findViewById<Switch>(R.id.notificationSwitch).isChecked =
             Prefs.notifications(this) && hasNotificationPermission()
         findViewById<Switch>(R.id.ambientSwitch).isChecked = Prefs.ambient(this)
+        findViewById<Switch>(R.id.thermalGuardSwitch).isChecked = Prefs.thermalGuard(this)
+        findViewById<Switch>(R.id.breakSwitch).isChecked = Prefs.breakMinutes(this) > 0
         syncingToggles = false
     }
 
@@ -1331,23 +1383,66 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun appearanceLabelRes(): Int = when {
+        Prefs.glass(this) -> R.string.appearance_glass
+        Prefs.amoled(this) -> R.string.appearance_amoled
+        else -> R.string.appearance_dark
+    }
+
     private fun chooseAppearance() {
         val options = arrayOf(
             getString(R.string.appearance_dark),
-            getString(R.string.appearance_amoled)
+            getString(R.string.appearance_amoled),
+            getString(R.string.appearance_glass)
         )
+        val selected = when {
+            Prefs.glass(this) -> 2
+            Prefs.amoled(this) -> 1
+            else -> 0
+        }
         AlertDialog.Builder(this)
             .setTitle(R.string.appearance)
-            .setSingleChoiceItems(
-                options,
-                if (Prefs.amoled(this)) 1 else 0
-            ) { dialog, which ->
+            .setSingleChoiceItems(options, selected) { dialog, which ->
+                Prefs.setGlass(this, which == 2)
                 Prefs.setAmoled(this, which == 1)
                 dialog.dismiss()
                 recreate()
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun chooseBackup() {
+        val options = arrayOf(
+            getString(R.string.backup_export),
+            getString(R.string.backup_import)
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.backup)
+            .setItems(options) { _, which ->
+                if (which == 0) startBackupExport() else startBackupImport()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun startBackupExport() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = Backup.MIME
+            putExtra(Intent.EXTRA_TITLE, Backup.FILE_NAME)
+        }
+        runCatching { startActivityForResult(intent, REQ_BACKUP_EXPORT) }
+            .onFailure { toast(getString(R.string.settings_unavailable)) }
+    }
+
+    private fun startBackupImport() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        runCatching { startActivityForResult(intent, REQ_BACKUP_IMPORT) }
+            .onFailure { toast(getString(R.string.settings_unavailable)) }
     }
 
     private fun chooseLanguage() {
@@ -1366,14 +1461,20 @@ class MainActivity : Activity() {
 
     private fun applyAppearance() {
         val amoled = Prefs.amoled(this)
+        val glass = Prefs.glass(this)
         findViewById<View>(R.id.root).setBackgroundResource(
-            if (amoled) R.drawable.bg_amoled else R.drawable.bg_app
+            when {
+                glass -> R.drawable.bg_liquid_glass
+                amoled -> R.drawable.bg_amoled
+                else -> R.drawable.bg_app
+            }
         )
         val backdropIndex = Prefs.backdrop(this)
         val customWallpaper = backdropIndex != Backdrops.DEFAULT
         val backdrop = findViewById<ImageView>(R.id.backdrop)
         backdrop.setImageResource(Backdrops.drawable(backdropIndex))
         backdrop.alpha = when {
+            glass -> if (customWallpaper) 0.5f else 0.4f
             customWallpaper -> if (amoled) 0.62f else 0.9f
             amoled -> 0.22f
             else -> 0.55f
@@ -1381,12 +1482,14 @@ class MainActivity : Activity() {
         aurora = findViewById(R.id.aurora)
         aurora?.setPalette(Accent.aurora(this), Accent.auroraDeep(this))
         // A chosen wallpaper is the subject, so the moving aurora steps back instead of
-        // washing it out.
+        // washing it out. Liquid Glass wants the opposite: a bright field to refract.
         aurora?.alpha = when {
+            glass -> 0.92f
             customWallpaper -> 0.35f
             amoled -> 0.45f
             else -> 0.72f
         }
+        LiquidGlass.apply(this)
     }
 
     // --------------------------------------------------------------- permissions
@@ -1493,6 +1596,22 @@ class MainActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_BACKUP_EXPORT || requestCode == REQ_BACKUP_IMPORT) {
+            val uri = data?.data
+            if (resultCode != RESULT_OK || uri == null) return
+            val ok = if (requestCode == REQ_BACKUP_EXPORT) {
+                Backup.export(this, uri)
+            } else {
+                Backup.import(this, uri)
+            }
+            if (requestCode == REQ_BACKUP_IMPORT && ok) {
+                toast(getString(R.string.backup_restored))
+                recreate()
+            } else {
+                toast(getString(if (ok) R.string.backup_done else R.string.backup_failed))
+            }
+            return
+        }
         if (requestCode != REQ_VPN) return
         if (resultCode == RESULT_OK) {
             startPrivateDns()
@@ -1791,6 +1910,7 @@ class MainActivity : Activity() {
             Backdrops.label(this, Prefs.backdrop(this))
         syncingToggles = true
         findViewById<Switch>(R.id.refreshLockSwitch).isChecked = Prefs.refreshLock(this)
+        findViewById<TextView>(R.id.appearanceValue).setText(appearanceLabelRes())
         syncingToggles = false
     }
 

@@ -44,6 +44,7 @@
             android:layout_height="76dp"
             android:layout_marginTop="6dp"
             android:background="@drawable/bg_card"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -108,6 +109,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="10dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -158,6 +160,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="12dp"
@@ -205,6 +208,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="12dp"
@@ -252,6 +256,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="12dp"
@@ -300,6 +305,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -351,6 +357,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -402,6 +409,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -453,6 +461,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="12dp"
@@ -500,6 +509,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -560,6 +570,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -610,6 +621,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -670,6 +682,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -730,6 +743,7 @@
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -785,11 +799,161 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/rowThermalGuard"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card_soft"
+            android:tag="glass"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="10dp">
+
+            <ImageView
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_icon_circle"
+                android:contentDescription="@null"
+                android:padding="9dp"
+                android:src="@drawable/ic_temp"
+                android:tint="?attr/gbAccentBright" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/GbRowTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/thermal_guard" />
+
+                <TextView
+                    style="@style/GbRowSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/thermal_guard_sub" />
+            </LinearLayout>
+
+            <Switch
+                android:id="@+id/thermalGuardSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:thumbTint="?attr/gbAccentBright"
+                android:trackTint="#552F8BFF" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rowBreak"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card_soft"
+            android:tag="glass"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="10dp">
+
+            <ImageView
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_icon_circle"
+                android:contentDescription="@null"
+                android:padding="9dp"
+                android:src="@drawable/ic_bell"
+                android:tint="?attr/gbAccentBright" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/GbRowTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/break_reminder" />
+
+                <TextView
+                    style="@style/GbRowSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/break_reminder_sub" />
+            </LinearLayout>
+
+            <Switch
+                android:id="@+id/breakSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:thumbTint="?attr/gbAccentBright"
+                android:trackTint="#552F8BFF" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rowBackup"
+            android:layout_width="match_parent"
+            android:layout_height="66dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card_soft"
+            android:tag="glass"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="14dp">
+
+            <ImageView
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_icon_circle"
+                android:contentDescription="@null"
+                android:padding="9dp"
+                android:src="@drawable/ic_shield"
+                android:tint="?attr/gbAccentBright" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/GbRowTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/backup" />
+
+                <TextView
+                    style="@style/GbRowSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/backup_sub" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron"
+                android:tint="@color/gb_muted" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/rowPermissions"
             android:layout_width="match_parent"
             android:layout_height="66dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card_soft"
+            android:tag="glass"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"

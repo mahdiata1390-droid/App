@@ -4,8 +4,8 @@ Production Android game booster for supported Android devices.
 
 ## Release
 - Display name: FLASH BOOSTER
-- Version: 1.1.0
-- Build: 2 (adds optional private DNS)
+- Version: 1.2.0
+- Build: 3 (adds Liquid Glass, thermal guard, break reminders, game shortcuts and backup)
 - Application ID: com.codleander.gamebooster
 - Min SDK: 26
 - Target SDK: 35
@@ -24,6 +24,12 @@ Production Android game booster for supported Android devices.
 - Keep-awake support
 - Session timer and history
 - Crash/process-death recovery state
+- Thermal Guard: a session ends by itself once the device runs too hot
+- Break reminders during long sessions
+- Launcher shortcuts: long-press the icon to boost an installed game in one tap
+- Backup & restore of every setting plus the session history as one JSON file
+- Liquid Glass appearance (iOS-27 style frosted, edge-lit panels over a live light field,
+  with real RenderEffect blur on Android 12+)
 
 ## Icons
 The master artwork is `art/icon-source-1024.png`. `python3 tools/make_icon.py` adds the
@@ -42,10 +48,10 @@ Edit the artwork or the script, never the generated PNGs.
 
 ## Store release
 `bash tools/build_release.sh` builds the signed release APK for Myket into
-`dist/flash-booster-1.1.0.apk`. The same signed file is committed as
+`dist/flash-booster-1.2.0.apk`. The same signed file is committed as
 `release/flash-booster-<version>.apk` so the published build can be downloaded straight from the
-repository; the committed `release/flash-booster-1.0.0.apk` is the previous build and needs a
-rerun of the script to publish 1.1.0. Listing copy is in `myket/listing.md`, the signing checklist in `RELEASE.md`.
+repository; the committed `release/flash-booster-1.1.0.apk` is the previous build and needs a
+rerun of the script to publish 1.2.0. Listing copy is in `myket/listing.md`, the signing checklist in `RELEASE.md`.
 
 ## Important
 This app uses standard Android APIs available to ordinary applications. It does not claim privileged CPU/GPU overclocking or root-only performance controls.

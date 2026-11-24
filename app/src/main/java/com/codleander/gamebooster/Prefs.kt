@@ -112,6 +112,27 @@ object Prefs {
         prefs(context).edit().putString("dns_host", host.trim()).apply()
     }
 
+    /** iOS-27 style liquid glass surfaces instead of the flat dark panels. */
+    fun glass(context: Context): Boolean = prefs(context).getBoolean("liquid_glass", false)
+
+    fun setGlass(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("liquid_glass", enabled).apply()
+    }
+
+    /** Ends a session automatically once the device gets too hot to keep gaming. */
+    fun thermalGuard(context: Context): Boolean = prefs(context).getBoolean("thermal_guard", true)
+
+    fun setThermalGuard(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("thermal_guard", enabled).apply()
+    }
+
+    /** Minutes between in-session break reminders; 0 turns them off. */
+    fun breakMinutes(context: Context): Int = prefs(context).getInt("break_minutes", 60)
+
+    fun setBreakMinutes(context: Context, minutes: Int) {
+        prefs(context).edit().putInt("break_minutes", minutes.coerceIn(0, 240)).apply()
+    }
+
     fun displayName(context: Context): String =
         prefs(context).getString("display_name", "")?.trim() ?: ""
 

@@ -30,6 +30,10 @@ class BoosterService : Service() {
         const val ACTION_REFRESH_HUD = "com.codleander.gamebooster.REFRESH_HUD"
         private const val CHANNEL_ID = "booster_session"
         private const val NOTIFICATION_ID = 1001
+        private const val CHANNEL_ALERTS = "booster_alerts"
+        private const val THERMAL_ALERT_ID = 1002
+        private const val BREAK_ALERT_ID = 1003
+        private const val THERMAL_GUARD_TEMP_C = 45f
         private const val POLL_MS = 2000L
         private const val SESSION_MAX_MS = 24L * 60L * 60L * 1000L
         private const val FOREGROUND_MISSING_GRACE_MS = 15_000L
@@ -64,6 +68,9 @@ class BoosterService : Service() {
     private var dndChangedByService = false
     private var dndChangedByUser = false
     private var brightnessChangedByService = false
+    private var thermalGuard = false
+    private var breakMinutes = 0
+    private var lastBreakAt = 0L
 
     private val poller = object : Runnable {
         override fun run() {
@@ -91,6 +98,17 @@ class BoosterService : Service() {
             }
             lastPollAt = now
             updateThermalPeak()
+            if (thermalGuard && thermalTooHot()) {
+                notifyThermalGuard()
+                stopSelf()
+                return
+            }
+            if (breakMinutes > 0 && foreground == target &&
+                now - lastBreakAt >= breakMinutes * 60_000L
+            ) {
+                notifyBreak()
+                lastBreakAt = now
+            }
             enforceScreenTimeout()
             enforceBrightnessLock()
             persistRuntimeHeartbeat()
@@ -166,6 +184,9 @@ class BoosterService : Service() {
                 sessionStartAt = sessionStartedAt
                 activePlayMs = 0L
                 lastPollAt = sessionStartedAt
+                thermalGuard = Prefs.thermalGuard(this)
+                breakMinutes = Prefs.breakMinutes(this)
+                lastBreakAt = sessionStartedAt
                 profileDnd = intent?.getBooleanExtra("profile_dnd", true) ?: true
                 profileAwake = intent?.getBooleanExtra("profile_awake", true) ?: true
                 profileBrightness = intent?.getBooleanExtra("profile_brightness", false) ?: false
@@ -475,6 +496,59 @@ class BoosterService : Service() {
         }
     }
 
+    /**
+     * Thermal Guard: the platform's severe status is authoritative, and the raw battery
+     * temperature catches devices that report heat late. Either one ends the session so the
+     * phone is not left throttling with the screen pinned awake.
+     */
+    private fun thermalTooHot(): Boolean {
+        val battery = DeviceStats.battery(this).temperatureC ?: 0f
+        if (battery >= THERMAL_GUARD_TEMP_C) return true
+        if (Build.VERSION.SDK_INT < 29) return false
+        val status = (getSystemService(POWER_SERVICE) as PowerManager).currentThermalStatus
+        return status >= PowerManager.THERMAL_STATUS_SEVERE
+    }
+
+    private fun notifyThermalGuard() {
+        postAlert(
+            THERMAL_ALERT_ID,
+            getString(R.string.notif_thermal_title),
+            getString(R.string.notif_thermal_text)
+        )
+    }
+
+    private fun notifyBreak() {
+        postAlert(
+            BREAK_ALERT_ID,
+            getString(R.string.notif_break_title),
+            getString(R.string.notif_break_text, breakMinutes)
+        )
+    }
+
+    private fun postAlert(id: Int, title: String, text: String) {
+        if (!Prefs.notifications(this)) return
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+        val pending = launch?.let {
+            PendingIntent.getActivity(
+                this,
+                id,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+        val alert = Notification.Builder(this, CHANNEL_ALERTS)
+            .setSmallIcon(R.drawable.ic_lightning)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .build()
+        runCatching {
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(id, alert)
+        }
+    }
+
     private fun enforceScreenTimeout() {
         if (!profileAwake || !screenTimeoutChangedByService || !Settings.System.canWrite(this)) return
         val current = runCatching {
@@ -679,14 +753,21 @@ class BoosterService : Service() {
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= 26) {
+            val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 getString(R.string.notif_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             )
             channel.description = getString(R.string.notif_session_active)
-            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-                .createNotificationChannel(channel)
+            manager.createNotificationChannel(channel)
+            val alerts = NotificationChannel(
+                CHANNEL_ALERTS,
+                getString(R.string.notif_channel_alerts),
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            alerts.description = getString(R.string.notif_break_title)
+            manager.createNotificationChannel(alerts)
         }
     }
 

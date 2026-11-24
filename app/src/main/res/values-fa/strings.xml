@@ -290,4 +290,24 @@
     <string name="dns_notif_channel">DNS خصوصی</string>
     <string name="dns_notif_active">DNS-over-TLS • %1$s</string>
     <string name="dns_notif_stop">خاموش کن</string>
+
+    <string name="appearance_glass">شیشه مایع</string>
+    <string name="thermal_guard">محافظ دما</string>
+    <string name="thermal_guard_sub">پیش از داغ شدن دستگاه، جلسه را می‌بندد</string>
+    <string name="break_reminder">یادآور استراحت</string>
+    <string name="break_reminder_sub">هر ساعت بازی یک یادآوری</string>
+    <string name="backup">پشتیبان‌گیری و بازیابی</string>
+    <string name="backup_sub">تنظیمات و تاریخچه بازی در یک فایل</string>
+    <string name="backup_export">گرفتن نسخه پشتیبان</string>
+    <string name="backup_import">بازیابی نسخه پشتیبان</string>
+    <string name="backup_done">نسخه پشتیبان ذخیره شد</string>
+    <string name="backup_restored">نسخه پشتیبان بازیابی شد</string>
+    <string name="backup_failed">فایل پشتیبان خوانده یا نوشته نشد</string>
+    <string name="shortcut_long_label">بوست %1$s</string>
+    <string name="shortcut_missing">این بازی دیگر نصب نیست</string>
+    <string name="notif_channel_alerts">هشدارهای بوستر</string>
+    <string name="notif_thermal_title">برای خنک شدن، جلسه بسته شد</string>
+    <string name="notif_thermal_text">دستگاه بیش از حد داغ شد و بوست پایان یافت. پیش از بازی بعدی بگذار خنک شود.</string>
+    <string name="notif_break_title">وقت استراحت است</string>
+    <string name="notif_break_text">%1$d دقیقه است بازی می‌کنی. کمی کش بیاور و آب بخور، بعد ادامه بده.</string>
 </resources>

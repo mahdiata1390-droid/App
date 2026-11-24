@@ -301,4 +301,25 @@
     <string name="dns_notif_channel">Private DNS</string>
     <string name="dns_notif_active">DNS-over-TLS • %1$s</string>
     <string name="dns_notif_stop">Turn off</string>
+
+    <!-- Liquid Glass, guards, shortcuts and backup -->
+    <string name="appearance_glass">Liquid Glass</string>
+    <string name="thermal_guard">Thermal Guard</string>
+    <string name="thermal_guard_sub">End the session before the device overheats</string>
+    <string name="break_reminder">Break Reminder</string>
+    <string name="break_reminder_sub">A nudge every hour of play</string>
+    <string name="backup">Backup &amp; Restore</string>
+    <string name="backup_sub">Settings and play history in one file</string>
+    <string name="backup_export">Export backup</string>
+    <string name="backup_import">Restore backup</string>
+    <string name="backup_done">Backup saved</string>
+    <string name="backup_restored">Backup restored</string>
+    <string name="backup_failed">The backup file could not be read or written</string>
+    <string name="shortcut_long_label">Boost %1$s</string>
+    <string name="shortcut_missing">That game is no longer installed</string>
+    <string name="notif_channel_alerts">Booster alerts</string>
+    <string name="notif_thermal_title">Session stopped to cool down</string>
+    <string name="notif_thermal_text">The device got too hot, so the boost ended. Let it cool before playing again.</string>
+    <string name="notif_break_title">Time for a break</string>
+    <string name="notif_break_text">You have been playing for %1$d minutes. Stretch and hydrate, then jump back in.</string>
 </resources>
