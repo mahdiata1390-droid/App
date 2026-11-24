@@ -293,7 +293,7 @@
 
     <string name="appearance_glass">شیشه مایع</string>
     <string name="thermal_guard">محافظ دما</string>
-    <string name="thermal_guard_sub">پیش از داغ شدن دستگاه، جلسه را می‌بندد</string>
+    <string name="thermal_guard_sub">اختیاری: فقط در گرمای شدید سیستم متوقف می‌کند</string>
     <string name="break_reminder">یادآور استراحت</string>
     <string name="break_reminder_sub">هر ساعت بازی یک یادآوری</string>
     <string name="backup">پشتیبان‌گیری و بازیابی</string>

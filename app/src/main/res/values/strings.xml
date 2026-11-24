@@ -305,7 +305,7 @@
     <!-- Liquid Glass, guards, shortcuts and backup -->
     <string name="appearance_glass">Liquid Glass</string>
     <string name="thermal_guard">Thermal Guard</string>
-    <string name="thermal_guard_sub">End the session before the device overheats</string>
+    <string name="thermal_guard_sub">Optional: stop only on severe system heat</string>
     <string name="break_reminder">Break Reminder</string>
     <string name="break_reminder_sub">A nudge every hour of play</string>
     <string name="backup">Backup &amp; Restore</string>

@@ -33,7 +33,6 @@ class BoosterService : Service() {
         private const val CHANNEL_ALERTS = "booster_alerts"
         private const val THERMAL_ALERT_ID = 1002
         private const val BREAK_ALERT_ID = 1003
-        private const val THERMAL_GUARD_TEMP_C = 45f
         private const val POLL_MS = 2000L
         private const val SESSION_MAX_MS = 24L * 60L * 60L * 1000L
         private const val FOREGROUND_MISSING_GRACE_MS = 15_000L
@@ -497,13 +496,11 @@ class BoosterService : Service() {
     }
 
     /**
-     * Thermal Guard: the platform's severe status is authoritative, and the raw battery
-     * temperature catches devices that report heat late. Either one ends the session so the
-     * phone is not left throttling with the screen pinned awake.
+     * Thermal Guard (opt-in): only the platform's severe status ends the session. The raw
+     * battery-temperature trigger is deliberately gone so a warm phone at 45 °C never kills
+     * a running boost on its own.
      */
     private fun thermalTooHot(): Boolean {
-        val battery = DeviceStats.battery(this).temperatureC ?: 0f
-        if (battery >= THERMAL_GUARD_TEMP_C) return true
         if (Build.VERSION.SDK_INT < 29) return false
         val status = (getSystemService(POWER_SERVICE) as PowerManager).currentThermalStatus
         return status >= PowerManager.THERMAL_STATUS_SEVERE

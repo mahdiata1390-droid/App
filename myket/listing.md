@@ -1,7 +1,7 @@
 # Myket store listing — FLASH BOOSTER
 
 Copy-paste material for the Myket developer panel (`developer.myket.ir`).
-Package: `com.codleander.gamebooster` · Version: 1.2.0 (3) · Category: Tools / Tools & Utilities.
+Package: `com.codleander.gamebooster` · Version: 1.2.1 (4) · Category: Tools / Tools & Utilities.
 
 ## Icon and images
 | Panel field | File | Notes |
@@ -70,6 +70,9 @@ Good to know
 - DNS خصوصی تا وقتی خودت روشنش نکنی خاموش است. برای عبور دادن فقط ترافیک DNS از API استاندارد VPN اندروید استفاده می‌کند؛ برنامه بقیه ترافیک تو را نمی‌خواند، ذخیره نمی‌کند و جایی نمی‌فرستد. هر لحظه می‌توانی خاموشش کنی و تا روشن است، نشان VPN در نوار وضعیت دیده می‌شود.
 - روی اندروید ۸.۰ (API 26) و بالاتر اجرا می‌شود. بدون تبلیغ، بدون حساب کاربری و بدون پشتیبان‌گیری ابری از داده‌های جلسه.
 
+## Release notes 1.2.1
+- Thermal Guard no longer ends a session at 45 °C battery temperature; it is opt-in and only reacts to a severe system thermal state
+
 ## Release notes 1.2.0
 - Liquid Glass appearance: frosted, edge-lit panels over a live light field, with real blur on Android 12+
 - Thermal Guard ends a session before the device overheats
@@ -94,8 +97,8 @@ The app has no ads, no analytics SDK, no account system and no data collection b
 history stored on the device.
 
 ## Upload checklist
-1. `bash tools/build_release.sh` (or `gradle :app:assembleRelease`) produces `dist/flash-booster-1.2.0.apk`;
-   the published copy is `release/flash-booster-1.1.0.apk`.
+1. `bash tools/build_release.sh` (or `gradle :app:assembleRelease`) produces `dist/flash-booster-1.2.1.apk`;
+   the published copy is `release/flash-booster-1.2.1.apk`.
 2. Confirm the APK is signed with the release certificate (`RELEASE_SIGNING_FINGERPRINT.txt`).
 3. Upload the APK, then fill title, descriptions, icon, at least three real screenshots, category and the
    privacy information above.

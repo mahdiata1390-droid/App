@@ -119,11 +119,16 @@ object Prefs {
         prefs(context).edit().putBoolean("liquid_glass", enabled).apply()
     }
 
-    /** Ends a session automatically once the device gets too hot to keep gaming. */
-    fun thermalGuard(context: Context): Boolean = prefs(context).getBoolean("thermal_guard", true)
+    /**
+     * Opt-in only: ends a session automatically once the platform reports severe heat.
+     * Off by default, and the battery-temperature trigger was removed on request, so an
+     * enabled session is never ended just because the phone reached 45 °C.
+     */
+    fun thermalGuard(context: Context): Boolean =
+        prefs(context).getBoolean("thermal_guard_optin", false)
 
     fun setThermalGuard(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean("thermal_guard", enabled).apply()
+        prefs(context).edit().putBoolean("thermal_guard_optin", enabled).apply()
     }
 
     /** Minutes between in-session break reminders; 0 turns them off. */

@@ -4,8 +4,8 @@ Production Android game booster for supported Android devices.
 
 ## Release
 - Display name: FLASH BOOSTER
-- Version: 1.2.0
-- Build: 3 (adds Liquid Glass, thermal guard, break reminders, game shortcuts and backup)
+- Version: 1.2.1
+- Build: 4 (Liquid Glass, break reminders, game shortcuts and backup; thermal guard is opt-in only)
 - Application ID: com.codleander.gamebooster
 - Min SDK: 26
 - Target SDK: 35
@@ -48,10 +48,10 @@ Edit the artwork or the script, never the generated PNGs.
 
 ## Store release
 `bash tools/build_release.sh` builds the signed release APK for Myket into
-`dist/flash-booster-1.2.0.apk`. The same signed file is committed as
+`dist/flash-booster-1.2.1.apk`. The same signed file is committed as
 `release/flash-booster-<version>.apk` so the published build can be downloaded straight from the
-repository; the committed `release/flash-booster-1.1.0.apk` is the previous build and needs a
-rerun of the script to publish 1.2.0. Listing copy is in `myket/listing.md`, the signing checklist in `RELEASE.md`.
+repository; the committed `release/flash-booster-1.2.0.apk` is the previous build and needs a
+rerun of the script to publish 1.2.1. Listing copy is in `myket/listing.md`, the signing checklist in `RELEASE.md`.
 
 ## Important
 This app uses standard Android APIs available to ordinary applications. It does not claim privileged CPU/GPU overclocking or root-only performance controls.
