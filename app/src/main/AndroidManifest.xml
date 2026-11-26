@@ -15,9 +15,9 @@
     <queries><intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent></queries>
     <application
         android:theme="@style/Theme.GameBooster"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/flash_booster_icon"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/flash_booster_icon"
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
